@@ -1,10 +1,9 @@
 import { Professor } from './types';
 import { useSyncExternalStore } from 'react';
-import { professores as seedProfessores } from './mockData';
 
 type Subscriber = () => void;
 
-let professoresStore: Professor[] = [...seedProfessores];
+let professoresStore: Professor[] = [];
 const subscribers = new Set<Subscriber>();
 
 export function listProfessores(): Professor[] {
@@ -46,7 +45,7 @@ export async function addProfessor(p: Professor) {
       notify();
       return;
     }
-  } catch {}
+  } catch { }
   // fallback local
   professoresStore = [...professoresStore, p];
   notify();
@@ -68,7 +67,7 @@ export async function updateProfessor(id: string, patch: Partial<Professor>) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
     });
-  } catch {}
+  } catch { }
   professoresStore = professoresStore.map((p) => (p.id === id ? { ...p, ...patch } : p));
   notify();
 }
@@ -80,7 +79,7 @@ export async function deleteProfessor(id: string) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ id }),
     });
-  } catch {}
+  } catch { }
   professoresStore = professoresStore.filter((p) => p.id !== id);
   notify();
 }

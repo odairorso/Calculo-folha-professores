@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { PageHeader } from '@/components/PageHeader';
-import { segmentos, formatCurrency, formatCompetencia } from '@/lib/mockData';
+import { formatCurrency, formatCompetencia } from '@/lib/mockData';
+import { useSegmentos, initSegmentosFromApi } from '@/lib/segmentosStore';
 import { Lancamento, gerarLancamento } from '@/lib/types';
 import { Card, CardContent } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -12,8 +13,13 @@ import { useProfessores } from '@/lib/store';
 
 export default function LancamentosPage() {
   const profs = useProfessores();
+  const segmentos = useSegmentos();
   const [lancs, setLancs] = useState<Lancamento[]>([]);
   const [compFilter, setCompFilter] = useState('2026-03');
+
+  useEffect(() => {
+    initSegmentosFromApi();
+  }, []);
 
   const filtered = useMemo(() => lancs.filter((l) => l.competencia === compFilter), [lancs, compFilter]);
   const totalGeral = filtered.reduce((s, l) => s + l.totalPagar, 0);

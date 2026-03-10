@@ -1,4 +1,4 @@
-function wrap(vercelHandler) {
+export function wrap(vercelHandler) {
   return async (event, context) => {
     let statusCode = 200;
     let headers = { 'Content-Type': 'application/json' };
@@ -33,6 +33,3 @@ function wrap(vercelHandler) {
     }
   };
 }
-
-module.exports = { wrap };
-

@@ -1,25 +1,57 @@
+import { useEffect } from 'react';
 import { PageHeader } from '@/components/PageHeader';
 import { StatCard } from '@/components/StatCard';
 import { Users, DollarSign, Clock, TrendingUp } from 'lucide-react';
-import { professores, segmentos, lancamentos, formatCurrency, formatCompetencia } from '@/lib/mockData';
+import { formatCurrency, formatCompetencia } from '@/lib/mockData';
+import { useProfessores, initProfessoresFromApi } from '@/lib/store';
+import { useSegmentos, initSegmentosFromApi } from '@/lib/segmentosStore';
+import { calcularHorasMensais } from '@/lib/types';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 
 const COLORS = ['hsl(220,65%,20%)', 'hsl(42,87%,55%)', 'hsl(142,71%,45%)', 'hsl(38,92%,50%)', 'hsl(0,72%,51%)', 'hsl(260,60%,50%)'];
 
 export default function DashboardPage() {
+  const professores = useProfessores();
+  const segmentos = useSegmentos();
+
+  useEffect(() => {
+    initProfessoresFromApi();
+    initSegmentosFromApi();
+  }, []);
+
   const ativos = professores.filter((p) => p.ativo).length;
-  const totalFolha = lancamentos.reduce((sum, l) => sum + l.totalPagar, 0);
-  const totalHoras = lancamentos.reduce((sum, l) => sum + l.totalHoras, 0);
-  const comp = lancamentos[0]?.competencia || '2026-03';
+  const comp = new Date().toISOString().slice(0, 7);
+
+  // Calcular lançamentos on-the-fly a partir de professores e segmentos reais
+  const lancamentos = professores.filter(p => p.ativo).flatMap((prof) => {
+    return prof.segmentoIds.map((segId) => {
+      const seg = segmentos.find((s) => s.id === segId);
+      if (!seg) return null;
+      const hs = prof.horasSemanais ?? seg.horasSemanais;
+      const mensais = calcularHorasMensais(hs);
+      const baseMensalSeg = calcularHorasMensais(seg.horasSemanais);
+      const percHA = baseMensalSeg ? (seg.horasAtividade ?? 0) / baseMensalSeg : 0;
+      const ha = mensais * percHA;
+      const repouso = (mensais + ha) * (seg.percRepouso ?? 1 / 6);
+      const totalHoras = mensais + ha + repouso;
+      const valorH = prof.valorHora ?? seg.valorHora;
+      const ajuda = prof.ajudaCusto ?? seg.ajudaCusto;
+      const totalPagar = totalHoras * valorH + ajuda;
+      return { professorId: prof.id, segmentoId: segId, totalPagar, totalHoras, competencia: comp };
+    }).filter(Boolean);
+  });
+
+  const totalFolha = lancamentos.reduce((sum, l) => sum + (l?.totalPagar ?? 0), 0);
+  const totalHoras = lancamentos.reduce((sum, l) => sum + (l?.totalHoras ?? 0), 0);
 
   // Per-segment chart data
   const segData = segmentos.map((seg) => {
-    const segLancs = lancamentos.filter((l) => l.segmentoId === seg.id);
+    const segLancs = lancamentos.filter((l) => l?.segmentoId === seg.id);
     return {
       nome: seg.nome,
-      total: segLancs.reduce((s, l) => s + l.totalPagar, 0),
-      horas: segLancs.reduce((s, l) => s + l.totalHoras, 0),
+      total: segLancs.reduce((s, l) => s + (l?.totalPagar ?? 0), 0),
+      horas: segLancs.reduce((s, l) => s + (l?.totalHoras ?? 0), 0),
       professores: segLancs.length,
     };
   });

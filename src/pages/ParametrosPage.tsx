@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { PageHeader } from '@/components/PageHeader';
-import { segmentos as initialSegmentos, formatCurrency } from '@/lib/mockData';
+import { formatCurrency } from '@/lib/mockData';
+import { useSegmentos, initSegmentosFromApi } from '@/lib/segmentosStore';
 import { Segmento } from '@/lib/types';
 import { Card, CardContent } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -11,31 +12,22 @@ import { Label } from '@/components/ui/label';
 import { Pencil, Save } from 'lucide-react';
 
 export default function ParametrosPage() {
-  const [segs, setSegs] = useState<Segmento[]>(initialSegmentos);
+  const apiSegmentos = useSegmentos();
+  const [segs, setSegs] = useState<Segmento[]>([]);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editValues, setEditValues] = useState<Partial<Segmento>>({});
 
-  // Carrega segmentos do backend (se disponível)
+  // Carrega segmentos do backend
   useEffect(() => {
-    const load = async () => {
-      try {
-        const r = await fetch('/api/segmentos');
-        if (r.ok) {
-          const data = await r.json();
-          // API traz haPercent; converte para horasAtividade para exibição
-          const converted: Segmento[] = data.map((s: any) => {
-            const mensais = (s.horasSemanais ?? 10) * 4.5;
-            const horasAtividade = Number((mensais * (s.haPercent ?? 0)).toFixed(2));
-            return { ...s, horasAtividade };
-          });
-          setSegs(converted);
-        }
-      } catch {
-        // fallback: já está com initialSegmentos
-      }
-    };
-    load();
+    initSegmentosFromApi();
   }, []);
+
+  // Sincroniza com o store
+  useEffect(() => {
+    if (apiSegmentos.length > 0) {
+      setSegs(apiSegmentos);
+    }
+  }, [apiSegmentos]);
 
   const startEdit = (seg: Segmento) => {
     setEditingId(seg.id);
@@ -68,11 +60,12 @@ export default function ParametrosPage() {
         const updated: Segmento = {
           id: u.id,
           nome: u.nome,
-          horasSemanais: u.horasSemanais,
-          valorHora: u.valorHora,
-          ajudaCusto: u.ajudaCusto,
+          horasSemanais: Number(u.horasSemanais),
+          percRepouso: Number(u.percRepouso) || 1 / 6,
+          valorHora: Number(u.valorHora),
+          ajudaCusto: Number(u.ajudaCusto),
           // Converte haPercent recebido para horasAtividade para exibição
-          horasAtividade: Number(((u.horasSemanais * 4.5) * (u.haPercent ?? haPercent)).toFixed(2)),
+          horasAtividade: Number(((Number(u.horasSemanais) * 4.5) * (Number(u.haPercent) || haPercent)).toFixed(2)),
         };
         setSegs(segs.map((s) => (s.id === editingId ? updated : s)));
       } else {

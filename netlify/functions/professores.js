@@ -1,5 +1,4 @@
-const { wrap } = require('./_adapter');
-const vercelHandler = require('../../api/professores.js');
+import { wrap } from './_adapter.js';
+import vercelHandler from '../../api/professores.js';
 
-exports.handler = wrap(vercelHandler);
-
+export const handler = wrap(vercelHandler);

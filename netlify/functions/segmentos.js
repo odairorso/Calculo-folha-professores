@@ -1,5 +1,4 @@
-const { wrap } = require('./_adapter');
-const vercelHandler = require('../../api/segmentos.js');
+import { wrap } from './_adapter.js';
+import vercelHandler from '../../api/segmentos.js';
 
-exports.handler = wrap(vercelHandler);
-
+export const handler = wrap(vercelHandler);

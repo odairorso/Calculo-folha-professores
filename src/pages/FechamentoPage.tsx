@@ -1,7 +1,9 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { PageHeader } from '@/components/PageHeader';
-import { lancamentos, professores, segmentos, fechamentos as initialFechamentos, formatCurrency, formatCompetencia } from '@/lib/mockData';
-import { Fechamento, Lancamento } from '@/lib/types';
+import { formatCurrency, formatCompetencia } from '@/lib/mockData';
+import { useProfessores, initProfessoresFromApi } from '@/lib/store';
+import { useSegmentos, initSegmentosFromApi } from '@/lib/segmentosStore';
+import { Fechamento, gerarLancamento, Lancamento } from '@/lib/types';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
@@ -13,12 +15,27 @@ import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
 
 export default function FechamentoPage() {
-  const [fechs, setFechs] = useState<Fechamento[]>(initialFechamentos);
+  const professores = useProfessores();
+  const segmentos = useSegmentos();
+  const [fechs, setFechs] = useState<Fechamento[]>([]);
   const [comp, setComp] = useState('2026-03');
   const [obs, setObs] = useState('');
   const [dialogOpen, setDialogOpen] = useState(false);
 
-  const compLancs = lancamentos.filter((l) => l.competencia === comp);
+  useEffect(() => {
+    initProfessoresFromApi();
+    initSegmentosFromApi();
+  }, []);
+
+  // Calcular lançamentos on-the-fly
+  const compLancs: Lancamento[] = professores.filter(p => p.ativo).flatMap((prof) => {
+    return prof.segmentoIds.map((segId) => {
+      const seg = segmentos.find((s) => s.id === segId);
+      if (!seg) return null;
+      const l = gerarLancamento(prof, seg, comp);
+      return { ...l, id: `l-${prof.id}-${segId}-${comp}` };
+    }).filter(Boolean) as Lancamento[];
+  });
   const totalGeral = compLancs.reduce((s, l) => s + l.totalPagar, 0);
   const isFechado = fechs.some((f) => f.competencia === comp);
 

@@ -1,6 +1,7 @@
 import { useState, useMemo, useEffect } from 'react';
 import { PageHeader } from '@/components/PageHeader';
-import { segmentos, formatCurrency } from '@/lib/mockData';
+import { formatCurrency } from '@/lib/mockData';
+import { useSegmentos, initSegmentosFromApi } from '@/lib/segmentosStore';
 import { Professor } from '@/lib/types';
 import { calcularHorasMensais } from '@/lib/types';
 import { Button } from '@/components/ui/button';
@@ -16,6 +17,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { addProfessor as storeAdd, useProfessores, toggleProfessorAtivo, updateProfessor, deleteProfessor, initProfessoresFromApi } from '@/lib/store';
 
 export default function ProfessoresPage() {
+  const segmentos = useSegmentos();
   const profs = useProfessores();
   const [search, setSearch] = useState('');
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -37,6 +39,7 @@ export default function ProfessoresPage() {
 
   useEffect(() => {
     initProfessoresFromApi();
+    initSegmentosFromApi();
   }, []);
 
   const filtered = useMemo(
@@ -305,89 +308,89 @@ export default function ProfessoresPage() {
                   <TableCell className="text-muted-foreground">
                     {typeof prof.horasSemanais === 'number'
                       ? (() => {
-                          // Soma das horas mensais considerando todos os segmentos
-                          const mensais = prof.segmentoIds.reduce((acc, sid) => {
-                            const seg = segmentos.find(s => s.id === sid);
-                            if (!seg) return acc;
-                            return acc + calcularHorasMensais(prof.horasSemanais!);
-                          }, 0);
-                          return `${mensais.toFixed(1)}h`;
-                        })()
+                        // Soma das horas mensais considerando todos os segmentos
+                        const mensais = prof.segmentoIds.reduce((acc, sid) => {
+                          const seg = segmentos.find(s => s.id === sid);
+                          if (!seg) return acc;
+                          return acc + calcularHorasMensais(prof.horasSemanais!);
+                        }, 0);
+                        return `${mensais.toFixed(1)}h`;
+                      })()
                       : '-'}
                   </TableCell>
                   <TableCell className="text-muted-foreground">
                     {typeof prof.horasSemanais === 'number'
                       ? (() => {
-                          let repousoSum = 0;
-                          prof.segmentoIds.forEach((sid) => {
-                            const seg = segmentos.find(s => s.id === sid);
-                            if (!seg) return;
-                            const mensais = calcularHorasMensais(prof.horasSemanais!);
-                            const baseMensalSeg = calcularHorasMensais(seg.horasSemanais);
-                            const percHA = baseMensalSeg ? seg.horasAtividade / baseMensalSeg : 0;
-                            const ha = mensais * percHA;
-                            const repouso = (mensais + ha) * seg.percRepouso;
-                            repousoSum += repouso;
-                          });
-                          return `${repousoSum.toFixed(1)}h`;
-                        })()
+                        let repousoSum = 0;
+                        prof.segmentoIds.forEach((sid) => {
+                          const seg = segmentos.find(s => s.id === sid);
+                          if (!seg) return;
+                          const mensais = calcularHorasMensais(prof.horasSemanais!);
+                          const baseMensalSeg = calcularHorasMensais(seg.horasSemanais);
+                          const percHA = baseMensalSeg ? seg.horasAtividade / baseMensalSeg : 0;
+                          const ha = mensais * percHA;
+                          const repouso = (mensais + ha) * seg.percRepouso;
+                          repousoSum += repouso;
+                        });
+                        return `${repousoSum.toFixed(1)}h`;
+                      })()
                       : '-'}
                   </TableCell>
                   <TableCell className="text-muted-foreground">
                     {typeof prof.horasSemanais === 'number'
                       ? (() => {
-                          let haSum = 0;
-                          prof.segmentoIds.forEach((sid) => {
-                            const seg = segmentos.find(s => s.id === sid);
-                            if (!seg) return;
-                            const mensais = calcularHorasMensais(prof.horasSemanais!);
-                            const baseMensalSeg = calcularHorasMensais(seg.horasSemanais);
-                            const percHA = baseMensalSeg ? seg.horasAtividade / baseMensalSeg : 0;
-                            const ha = mensais * percHA;
-                            haSum += ha;
-                          });
-                          return `${haSum.toFixed(1)}h`;
-                        })()
+                        let haSum = 0;
+                        prof.segmentoIds.forEach((sid) => {
+                          const seg = segmentos.find(s => s.id === sid);
+                          if (!seg) return;
+                          const mensais = calcularHorasMensais(prof.horasSemanais!);
+                          const baseMensalSeg = calcularHorasMensais(seg.horasSemanais);
+                          const percHA = baseMensalSeg ? seg.horasAtividade / baseMensalSeg : 0;
+                          const ha = mensais * percHA;
+                          haSum += ha;
+                        });
+                        return `${haSum.toFixed(1)}h`;
+                      })()
                       : '-'}
                   </TableCell>
                   <TableCell className="text-muted-foreground">
                     {typeof prof.horasSemanais === 'number'
                       ? (() => {
-                          let totalH = 0;
-                          prof.segmentoIds.forEach((sid) => {
-                            const seg = segmentos.find(s => s.id === sid);
-                            if (!seg) return;
-                            const mensais = calcularHorasMensais(prof.horasSemanais!);
-                            const baseMensalSeg = calcularHorasMensais(seg.horasSemanais);
-                            const percHA = baseMensalSeg ? seg.horasAtividade / baseMensalSeg : 0;
-                            const ha = mensais * percHA;
-                            const repouso = (mensais + ha) * seg.percRepouso;
-                            totalH += mensais + ha + repouso;
-                          });
-                          return `${totalH.toFixed(1)}h`;
-                        })()
+                        let totalH = 0;
+                        prof.segmentoIds.forEach((sid) => {
+                          const seg = segmentos.find(s => s.id === sid);
+                          if (!seg) return;
+                          const mensais = calcularHorasMensais(prof.horasSemanais!);
+                          const baseMensalSeg = calcularHorasMensais(seg.horasSemanais);
+                          const percHA = baseMensalSeg ? seg.horasAtividade / baseMensalSeg : 0;
+                          const ha = mensais * percHA;
+                          const repouso = (mensais + ha) * seg.percRepouso;
+                          totalH += mensais + ha + repouso;
+                        });
+                        return `${totalH.toFixed(1)}h`;
+                      })()
                       : '-'}
                   </TableCell>
                   <TableCell className="text-muted-foreground font-medium">
                     {typeof prof.horasSemanais === 'number'
                       ? (() => {
-                          // Calcula Total a Pagar somando por segmento com overrides
-                          let total = 0;
-                          prof.segmentoIds.forEach((sid) => {
-                            const seg = segmentos.find(s => s.id === sid);
-                            if (!seg) return;
-                            const mensais = calcularHorasMensais(prof.horasSemanais!);
-                            const baseMensalSeg = calcularHorasMensais(seg.horasSemanais);
-                            const percHA = baseMensalSeg ? seg.horasAtividade / baseMensalSeg : 0;
-                            const ha = mensais * percHA;
-                            const repouso = (mensais + ha) * seg.percRepouso;
-                            const totalHoras = mensais + ha + repouso;
-                            const valorH = typeof prof.valorHora === 'number' ? prof.valorHora : seg.valorHora;
-                            const ajuda = typeof prof.ajudaCusto === 'number' ? prof.ajudaCusto : seg.ajudaCusto;
-                            total += totalHoras * valorH + ajuda;
-                          });
-                          return formatCurrency(Number(total.toFixed(2)));
-                        })()
+                        // Calcula Total a Pagar somando por segmento com overrides
+                        let total = 0;
+                        prof.segmentoIds.forEach((sid) => {
+                          const seg = segmentos.find(s => s.id === sid);
+                          if (!seg) return;
+                          const mensais = calcularHorasMensais(prof.horasSemanais!);
+                          const baseMensalSeg = calcularHorasMensais(seg.horasSemanais);
+                          const percHA = baseMensalSeg ? seg.horasAtividade / baseMensalSeg : 0;
+                          const ha = mensais * percHA;
+                          const repouso = (mensais + ha) * seg.percRepouso;
+                          const totalHoras = mensais + ha + repouso;
+                          const valorH = typeof prof.valorHora === 'number' ? prof.valorHora : seg.valorHora;
+                          const ajuda = typeof prof.ajudaCusto === 'number' ? prof.ajudaCusto : seg.ajudaCusto;
+                          total += totalHoras * valorH + ajuda;
+                        });
+                        return formatCurrency(Number(total.toFixed(2)));
+                      })()
                       : '-'}
                   </TableCell>
                   <TableCell>

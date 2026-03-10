@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { PageHeader } from '@/components/PageHeader';
-import { segmentos, formatCurrency, formatCompetencia } from '@/lib/mockData';
+import { formatCurrency, formatCompetencia } from '@/lib/mockData';
+import { useSegmentos, initSegmentosFromApi } from '@/lib/segmentosStore';
 import { gerarLancamento, Lancamento } from '@/lib/types';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -14,8 +15,13 @@ import { FileDown } from 'lucide-react';
 
 export default function RelatoriosPage() {
   const profs = useProfessores();
+  const segmentos = useSegmentos();
   const [comp, setComp] = useState('2026-03');
   const [compLancs, setCompLancs] = useState<Lancamento[]>([]);
+
+  useEffect(() => {
+    initSegmentosFromApi();
+  }, []);
 
   const recalcular = () => {
     const list: Lancamento[] = [];
