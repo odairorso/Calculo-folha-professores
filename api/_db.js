@@ -1,6 +1,6 @@
-import { neon } from '@neondatabase/serverless';
+const { neon } = require('@neondatabase/serverless');
 
-export function getSql() {
+function getSql() {
   const raw = process.env.DATABASE_URL;
   if (!raw) {
     throw new Error('DATABASE_URL não definida no ambiente da Vercel/Local');
@@ -16,3 +16,5 @@ export function getSql() {
   }
   return neon(url);
 }
+
+module.exports = { getSql };
