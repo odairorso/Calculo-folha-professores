@@ -173,10 +173,10 @@ export default function ProfessoresPage() {
                     const aj = parseFloat(ajudaCusto);
                     if (!seg || !Number.isFinite(hs)) return <div className="col-span-3 text-muted-foreground">Preencha Ano e Horas/Sem para ver o preview</div>;
                     const mensais = calcularHorasMensais(hs);
-                    const repouso = mensais * seg.percRepouso;
                     const baseMensalSeg = calcularHorasMensais(seg.horasSemanais);
                     const percHA = baseMensalSeg ? seg.horasAtividade / baseMensalSeg : 0;
                     const ha = mensais * percHA;
+                    const repouso = (mensais + ha) * seg.percRepouso;
                     const totalHoras = mensais + repouso + ha;
                     const salario = totalHoras * (Number.isFinite(vh) ? vh : seg.valorHora) + (Number.isFinite(aj) ? aj : seg.ajudaCusto);
                     return (
@@ -248,6 +248,9 @@ export default function ProfessoresPage() {
                 <TableHead>Valor Hora</TableHead>
                 <TableHead>Ajuda Custo</TableHead>
                 <TableHead>Mensal</TableHead>
+                <TableHead>Repouso</TableHead>
+                <TableHead>H.A.</TableHead>
+                <TableHead>Total Hrs</TableHead>
                 <TableHead>T. a Pagar</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead className="text-right">Ações</TableHead>
@@ -297,6 +300,59 @@ export default function ProfessoresPage() {
                         })()
                       : '-'}
                   </TableCell>
+                  <TableCell className="text-muted-foreground">
+                    {typeof prof.horasSemanais === 'number'
+                      ? (() => {
+                          let repousoSum = 0;
+                          prof.segmentoIds.forEach((sid) => {
+                            const seg = segmentos.find(s => s.id === sid);
+                            if (!seg) return;
+                            const mensais = calcularHorasMensais(prof.horasSemanais!);
+                            const baseMensalSeg = calcularHorasMensais(seg.horasSemanais);
+                            const percHA = baseMensalSeg ? seg.horasAtividade / baseMensalSeg : 0;
+                            const ha = mensais * percHA;
+                            const repouso = (mensais + ha) * seg.percRepouso;
+                            repousoSum += repouso;
+                          });
+                          return `${repousoSum.toFixed(1)}h`;
+                        })()
+                      : '-'}
+                  </TableCell>
+                  <TableCell className="text-muted-foreground">
+                    {typeof prof.horasSemanais === 'number'
+                      ? (() => {
+                          let haSum = 0;
+                          prof.segmentoIds.forEach((sid) => {
+                            const seg = segmentos.find(s => s.id === sid);
+                            if (!seg) return;
+                            const mensais = calcularHorasMensais(prof.horasSemanais!);
+                            const baseMensalSeg = calcularHorasMensais(seg.horasSemanais);
+                            const percHA = baseMensalSeg ? seg.horasAtividade / baseMensalSeg : 0;
+                            const ha = mensais * percHA;
+                            haSum += ha;
+                          });
+                          return `${haSum.toFixed(1)}h`;
+                        })()
+                      : '-'}
+                  </TableCell>
+                  <TableCell className="text-muted-foreground">
+                    {typeof prof.horasSemanais === 'number'
+                      ? (() => {
+                          let totalH = 0;
+                          prof.segmentoIds.forEach((sid) => {
+                            const seg = segmentos.find(s => s.id === sid);
+                            if (!seg) return;
+                            const mensais = calcularHorasMensais(prof.horasSemanais!);
+                            const baseMensalSeg = calcularHorasMensais(seg.horasSemanais);
+                            const percHA = baseMensalSeg ? seg.horasAtividade / baseMensalSeg : 0;
+                            const ha = mensais * percHA;
+                            const repouso = (mensais + ha) * seg.percRepouso;
+                            totalH += mensais + ha + repouso;
+                          });
+                          return `${totalH.toFixed(1)}h`;
+                        })()
+                      : '-'}
+                  </TableCell>
                   <TableCell className="text-muted-foreground font-medium">
                     {typeof prof.horasSemanais === 'number'
                       ? (() => {
@@ -306,11 +362,11 @@ export default function ProfessoresPage() {
                             const seg = segmentos.find(s => s.id === sid);
                             if (!seg) return;
                             const mensais = calcularHorasMensais(prof.horasSemanais!);
-                            const repouso = mensais * seg.percRepouso;
                             const baseMensalSeg = calcularHorasMensais(seg.horasSemanais);
                             const percHA = baseMensalSeg ? seg.horasAtividade / baseMensalSeg : 0;
                             const ha = mensais * percHA;
-                            const totalHoras = mensais + repouso + ha;
+                            const repouso = (mensais + ha) * seg.percRepouso;
+                            const totalHoras = mensais + ha + repouso;
                             const valorH = typeof prof.valorHora === 'number' ? prof.valorHora : seg.valorHora;
                             const ajuda = typeof prof.ajudaCusto === 'number' ? prof.ajudaCusto : seg.ajudaCusto;
                             total += totalHoras * valorH + ajuda;
@@ -388,10 +444,10 @@ export default function ProfessoresPage() {
                 const aj = parseFloat(editAjudaCusto);
                 if (!seg || !Number.isFinite(hs)) return <div className="col-span-3 text-muted-foreground">Informe Ano e Horas/Sem para ver o preview</div>;
                 const mensais = calcularHorasMensais(hs);
-                const repouso = mensais * seg.percRepouso;
                 const baseMensalSeg = calcularHorasMensais(seg.horasSemanais);
                 const percHA = baseMensalSeg ? seg.horasAtividade / baseMensalSeg : 0;
                 const ha = mensais * percHA;
+                const repouso = (mensais + ha) * seg.percRepouso;
                 const totalHoras = mensais + repouso + ha;
                 const salario = totalHoras * (Number.isFinite(vh) ? vh : (editing?.valorHora ?? seg.valorHora)) + (Number.isFinite(aj) ? aj : (editing?.ajudaCusto ?? seg.ajudaCusto));
                 return (

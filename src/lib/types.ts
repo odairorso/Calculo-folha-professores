@@ -74,9 +74,10 @@ export function gerarLancamento(
 ): Omit<Lancamento, 'id'> {
   const horasBaseSemanais = professor.horasSemanais ?? segmento.horasSemanais;
   const horasMensais = calcularHorasMensais(horasBaseSemanais);
-  const repouso = calcularRepouso(horasMensais, segmento.percRepouso);
   const percHA = calcularPercentualHA(segmento);
   const horasAtividade = Number((horasMensais * percHA).toFixed(2));
+  // Novo cálculo: Repouso = (Mensal + H.A.) * percRepouso
+  const repouso = calcularRepouso(horasMensais + horasAtividade, segmento.percRepouso);
   const totalHoras = calcularTotalHoras(horasMensais, repouso, horasAtividade);
   const valorHora = professor.valorHora ?? segmento.valorHora;
   const ajudaCusto = professor.ajudaCusto ?? segmento.ajudaCusto;

@@ -130,3 +130,31 @@ describe('horasAtividade dinâmicas por percentual do segmento', () => {
     expect(lanc.horasAtividade).toBeCloseTo(54 * 0.2, 2);
   });
 });
+
+describe('repouso usa (mensal + ha) / 6', () => {
+  const segmento: Segmento = {
+    id: 's1',
+    nome: 'Teste',
+    horasSemanais: 10, // 45 mensais
+    percRepouso: 1/6,
+    horasAtividade: 2.25, // 5% de 45
+    valorHora: 20,
+    ajudaCusto: 0,
+  };
+  const prof: Professor = {
+    id: 'p1',
+    nome: 'P',
+    cpf: '0',
+    dataAdmissao: '2024-01-01',
+    segmentoIds: ['s1'],
+    ativo: true,
+    horasSemanais: 12, // 54 mensais
+  };
+  it('calcula repouso baseado em mensal + ha', () => {
+    const lanc = gerarLancamento(prof, segmento, '2026-03');
+    const ha = 54 * (segmento.horasAtividade / 45); // 5% de 54
+    const esperado = (54 + ha) * (1/6);
+    expect(lanc.repouso).toBeCloseTo(esperado, 2);
+    expect(lanc.totalHoras).toBeCloseTo(54 + ha + esperado, 2);
+  });
+});
