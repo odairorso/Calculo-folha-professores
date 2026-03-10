@@ -10,7 +10,8 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Plus, Search, UserCheck, UserX, Pencil, Trash2 } from 'lucide-react';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { Plus, Search, UserCheck, UserX, Pencil, Trash2, MoreHorizontal } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { addProfessor as storeAdd, useProfessores, toggleProfessorAtivo, updateProfessor, deleteProfessor } from '@/lib/store';
 
@@ -381,15 +382,32 @@ export default function ProfessoresPage() {
                     </Badge>
                   </TableCell>
                   <TableCell className="text-right">
-                    <Button variant="ghost" size="sm" onClick={() => openEdit(prof)}>
-                      <Pencil className="w-4 h-4" />
-                    </Button>
-                    <Button variant="ghost" size="sm" onClick={() => removeProfessor(prof.id)}>
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
-                    <Button variant="ghost" size="sm" onClick={() => toggleAtivo(prof.id)}>
-                      {prof.ativo ? <UserX className="w-4 h-4" /> : <UserCheck className="w-4 h-4" />}
-                    </Button>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="sm" aria-label="Ações">
+                          <MoreHorizontal className="w-4 h-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={() => openEdit(prof)}>
+                          <Pencil className="w-4 h-4 mr-2" /> Editar
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => removeProfessor(prof.id)}>
+                          <Trash2 className="w-4 h-4 mr-2" /> Excluir
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => toggleAtivo(prof.id)}>
+                          {prof.ativo ? (
+                            <>
+                              <UserX className="w-4 h-4 mr-2" /> Inativar
+                            </>
+                          ) : (
+                            <>
+                              <UserCheck className="w-4 h-4 mr-2" /> Ativar
+                            </>
+                          )}
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </TableCell>
                 </TableRow>
               ))}
