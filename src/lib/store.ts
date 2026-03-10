@@ -15,11 +15,18 @@ export async function initProfessoresFromApi() {
     const r = await fetch('/api/professores');
     if (r.ok) {
       const data = await r.json();
-      professoresStore = data;
+      // PostgreSQL NUMERIC retorna strings — converter para numbers
+      professoresStore = data.map((p: any) => ({
+        ...p,
+        horasSemanais: p.horasSemanais != null ? Number(p.horasSemanais) : undefined,
+        valorHora: p.valorHora != null ? Number(p.valorHora) : undefined,
+        ajudaCusto: p.ajudaCusto != null ? Number(p.ajudaCusto) : undefined,
+        ativo: typeof p.ativo === 'boolean' ? p.ativo : p.ativo === true || p.ativo === 'true',
+      })) as Professor[];
       notify();
     }
   } catch {
-    // fallback: mantém seed local
+    // API indisponível
   }
 }
 

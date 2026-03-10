@@ -62,9 +62,9 @@ export function calcularTotalPagar(totalHoras: number, valorHora: number, ajudaC
 }
 
 function calcularPercentualHA(segmento: Segmento): number {
-  const baseMensal = calcularHorasMensais(segmento.horasSemanais);
+  const baseMensal = calcularHorasMensais(Number(segmento.horasSemanais) || 0);
   if (baseMensal === 0) return 0;
-  return segmento.horasAtividade / baseMensal;
+  return (Number(segmento.horasAtividade) || 0) / baseMensal;
 }
 
 export function gerarLancamento(
@@ -72,15 +72,17 @@ export function gerarLancamento(
   segmento: Segmento,
   competencia: string
 ): Omit<Lancamento, 'id'> {
-  const horasBaseSemanais = professor.horasSemanais ?? segmento.horasSemanais;
+  // Forçar Number() pois PostgreSQL NUMERIC retorna strings
+  const horasBaseSemanais = Number(professor.horasSemanais ?? segmento.horasSemanais) || 0;
   const horasMensais = calcularHorasMensais(horasBaseSemanais);
   const percHA = calcularPercentualHA(segmento);
   const horasAtividade = Number((horasMensais * percHA).toFixed(2));
   // Novo cálculo: Repouso = (Mensal + H.A.) * percRepouso
-  const repouso = calcularRepouso(horasMensais + horasAtividade, segmento.percRepouso);
+  const percRepouso = Number(segmento.percRepouso) || 1 / 6;
+  const repouso = calcularRepouso(horasMensais + horasAtividade, percRepouso);
   const totalHoras = calcularTotalHoras(horasMensais, repouso, horasAtividade);
-  const valorHora = professor.valorHora ?? segmento.valorHora;
-  const ajudaCusto = professor.ajudaCusto ?? segmento.ajudaCusto;
+  const valorHora = Number(professor.valorHora ?? segmento.valorHora) || 0;
+  const ajudaCusto = Number(professor.ajudaCusto ?? segmento.ajudaCusto) || 0;
   const totalPagar = calcularTotalPagar(totalHoras, valorHora, ajudaCusto);
 
   return {

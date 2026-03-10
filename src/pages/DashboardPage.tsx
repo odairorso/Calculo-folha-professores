@@ -28,15 +28,15 @@ export default function DashboardPage() {
     return prof.segmentoIds.map((segId) => {
       const seg = segmentos.find((s) => s.id === segId);
       if (!seg) return null;
-      const hs = prof.horasSemanais ?? seg.horasSemanais;
+      const hs = Number(prof.horasSemanais ?? seg.horasSemanais) || 0;
       const mensais = calcularHorasMensais(hs);
-      const baseMensalSeg = calcularHorasMensais(seg.horasSemanais);
-      const percHA = baseMensalSeg ? (seg.horasAtividade ?? 0) / baseMensalSeg : 0;
+      const baseMensalSeg = calcularHorasMensais(Number(seg.horasSemanais) || 0);
+      const percHA = baseMensalSeg ? (Number(seg.horasAtividade) || 0) / baseMensalSeg : 0;
       const ha = mensais * percHA;
-      const repouso = (mensais + ha) * (seg.percRepouso ?? 1 / 6);
+      const repouso = (mensais + ha) * (Number(seg.percRepouso) || 1 / 6);
       const totalHoras = mensais + ha + repouso;
-      const valorH = prof.valorHora ?? seg.valorHora;
-      const ajuda = prof.ajudaCusto ?? seg.ajudaCusto;
+      const valorH = Number(prof.valorHora ?? seg.valorHora) || 0;
+      const ajuda = Number(prof.ajudaCusto ?? seg.ajudaCusto) || 0;
       const totalPagar = totalHoras * valorH + ajuda;
       return { professorId: prof.id, segmentoId: segId, totalPagar, totalHoras, competencia: comp };
     }).filter(Boolean);
