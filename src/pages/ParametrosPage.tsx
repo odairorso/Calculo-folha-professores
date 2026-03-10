@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { PageHeader } from '@/components/PageHeader';
 import { segmentos as initialSegmentos, formatCurrency } from '@/lib/mockData';
 import { Segmento } from '@/lib/types';
@@ -15,16 +15,76 @@ export default function ParametrosPage() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editValues, setEditValues] = useState<Partial<Segmento>>({});
 
+  // Carrega segmentos do backend (se disponível)
+  useEffect(() => {
+    const load = async () => {
+      try {
+        const r = await fetch('/api/segmentos');
+        if (r.ok) {
+          const data = await r.json();
+          // API traz haPercent; converte para horasAtividade para exibição
+          const converted: Segmento[] = data.map((s: any) => {
+            const mensais = (s.horasSemanais ?? 10) * 4.5;
+            const horasAtividade = Number((mensais * (s.haPercent ?? 0)).toFixed(2));
+            return { ...s, horasAtividade };
+          });
+          setSegs(converted);
+        }
+      } catch {
+        // fallback: já está com initialSegmentos
+      }
+    };
+    load();
+  }, []);
+
   const startEdit = (seg: Segmento) => {
     setEditingId(seg.id);
     setEditValues({ ...seg });
   };
 
-  const saveEdit = () => {
+  const saveEdit = async () => {
     if (!editingId) return;
-    setSegs(segs.map((s) => (s.id === editingId ? { ...s, ...editValues } as Segmento : s)));
-    setEditingId(null);
-    setEditValues({});
+    // Atualiza no backend, se disponível
+    try {
+      const current = segs.find(s => s.id === editingId)!;
+      const horasSemanais = editValues.horasSemanais ?? current.horasSemanais;
+      const mensais = horasSemanais * 4.5;
+      const haHoras = editValues.horasAtividade ?? current.horasAtividade;
+      const haPercent = mensais > 0 ? haHoras / mensais : 0;
+      const body: any = {
+        id: editingId,
+        horasSemanais,
+        valorHora: editValues.valorHora ?? current.valorHora,
+        ajudaCusto: editValues.ajudaCusto ?? current.ajudaCusto,
+        haPercent
+      };
+      const r = await fetch('/api/segmentos', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+      });
+      if (r.ok) {
+        const u = await r.json();
+        const updated: Segmento = {
+          id: u.id,
+          nome: u.nome,
+          horasSemanais: u.horasSemanais,
+          valorHora: u.valorHora,
+          ajudaCusto: u.ajudaCusto,
+          // Converte haPercent recebido para horasAtividade para exibição
+          horasAtividade: Number(((u.horasSemanais * 4.5) * (u.haPercent ?? haPercent)).toFixed(2)),
+        };
+        setSegs(segs.map((s) => (s.id === editingId ? updated : s)));
+      } else {
+        // Fallback local se API indisponível
+        setSegs(segs.map((s) => (s.id === editingId ? { ...s, ...editValues } as Segmento : s)));
+      }
+    } catch {
+      setSegs(segs.map((s) => (s.id === editingId ? { ...s, ...editValues } as Segmento : s)));
+    } finally {
+      setEditingId(null);
+      setEditValues({});
+    }
   };
 
   return (

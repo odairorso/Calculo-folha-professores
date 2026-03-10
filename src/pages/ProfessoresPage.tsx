@@ -40,6 +40,16 @@ export default function ProfessoresPage() {
     [profs, search]
   );
 
+  // Quando trocar o Ano na edição, preenche Valor/Hora e Ajuda de Custo somente se estiverem vazios
+  useEffect(() => {
+    if (!editOpen) return;
+    const seg = segmentos.find((s) => s.id === editSegId);
+    if (seg) {
+      if (!editValorHora) setEditValorHora(String(seg.valorHora));
+      if (!editAjudaCusto) setEditAjudaCusto(String(seg.ajudaCusto));
+    }
+  }, [editSegId, editOpen]);
+
   const addProfessor = () => {
     if (!nome || !cpf || !segId) return;
     const horasValue = parseFloat(horasSem);
