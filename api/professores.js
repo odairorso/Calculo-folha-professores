@@ -52,9 +52,43 @@ module.exports = async (req, res) => {
       return;
     }
 
+    if (req.method === 'PATCH' || req.method === 'PUT') {
+      const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : req.body || {};
+      const { id, nome, cpf, dataAdmissao, horasSemanais, valorHora, ajudaCusto, ativo, segmentoId } = body;
+      if (!id) {
+        res.status(400).json({ error: 'id é obrigatório' });
+        return;
+      }
+      // Atualiza campos básicos, apenas os informados
+      if (nome != null) await sql`update professores set nome = ${nome} where id = ${id}`;
+      if (cpf != null) await sql`update professores set cpf = ${cpf} where id = ${id}`;
+      if (dataAdmissao != null) await sql`update professores set data_admissao = ${dataAdmissao} where id = ${id}`;
+      if (horasSemanais != null) await sql`update professores set horas_semanais = ${horasSemanais} where id = ${id}`;
+      if (valorHora != null) await sql`update professores set valor_hora = ${valorHora} where id = ${id}`;
+      if (ajudaCusto != null) await sql`update professores set ajuda_custo = ${ajudaCusto} where id = ${id}`;
+      if (ativo != null) await sql`update professores set ativo = ${ativo} where id = ${id}`;
+      if (segmentoId != null) {
+        await sql`delete from professor_segmentos where professor_id = ${id}`;
+        await sql`insert into professor_segmentos (professor_id, segmento_id) values (${id}, ${segmentoId})`;
+      }
+      res.status(204).end();
+      return;
+    }
+
+    if (req.method === 'DELETE') {
+      const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : req.body || {};
+      const { id } = body;
+      if (!id) {
+        res.status(400).json({ error: 'id é obrigatório' });
+        return;
+      }
+      await sql`delete from professores where id = ${id}`;
+      res.status(204).end();
+      return;
+    }
+
     res.status(405).json({ error: 'Método não suportado' });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 };
-

@@ -13,7 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Plus, Search, UserCheck, UserX, Pencil, Trash2, MoreHorizontal } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { addProfessor as storeAdd, useProfessores, toggleProfessorAtivo, updateProfessor, deleteProfessor } from '@/lib/store';
+import { addProfessor as storeAdd, useProfessores, toggleProfessorAtivo, updateProfessor, deleteProfessor, initProfessoresFromApi } from '@/lib/store';
 
 export default function ProfessoresPage() {
   const profs = useProfessores();
@@ -34,6 +34,10 @@ export default function ProfessoresPage() {
   const [editValorHora, setEditValorHora] = useState('');
   const [editAjudaCusto, setEditAjudaCusto] = useState('');
   const [editSegId, setEditSegId] = useState('');
+
+  useEffect(() => {
+    initProfessoresFromApi();
+  }, []);
 
   const filtered = useMemo(
     () => profs.filter((p) => p.nome.toLowerCase().includes(search.toLowerCase())),
