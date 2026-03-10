@@ -1,6 +1,6 @@
-const { getSql } = require('./_db');
+import { getSql } from './_db.js';
 
-module.exports = async (req, res) => {
+export default async function handler(req, res) {
   try {
     const sql = getSql();
     if (req.method === 'GET') {
@@ -59,7 +59,6 @@ module.exports = async (req, res) => {
         res.status(400).json({ error: 'id é obrigatório' });
         return;
       }
-      // Atualiza campos básicos, apenas os informados
       if (nome != null) await sql`update professores set nome = ${nome} where id = ${id}`;
       if (cpf != null) await sql`update professores set cpf = ${cpf} where id = ${id}`;
       if (dataAdmissao != null) await sql`update professores set data_admissao = ${dataAdmissao} where id = ${id}`;
@@ -91,4 +90,4 @@ module.exports = async (req, res) => {
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
-};
+}

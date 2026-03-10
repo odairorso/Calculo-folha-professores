@@ -1,6 +1,6 @@
-const { getSql } = require('./_db');
+import { getSql } from './_db.js';
 
-module.exports = async (req, res) => {
+export default async function handler(req, res) {
   try {
     const sql = getSql();
 
@@ -25,7 +25,6 @@ module.exports = async (req, res) => {
         res.status(400).json({ error: 'id é obrigatório' });
         return;
       }
-      // Atualiza apenas os campos informados
       if (horasSemanais != null) {
         await sql`update segmentos set horas_semanais = ${horasSemanais} where id = ${id}`;
       }
@@ -55,4 +54,4 @@ module.exports = async (req, res) => {
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
-};
+}

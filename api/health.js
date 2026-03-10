@@ -1,6 +1,6 @@
-const { getSql } = require('./_db');
+import { getSql } from './_db.js';
 
-module.exports = async (req, res) => {
+export default async function handler(req, res) {
   try {
     const sql = getSql();
     const rows = await sql`select 1 as ok`;
@@ -8,5 +8,4 @@ module.exports = async (req, res) => {
   } catch (err) {
     res.status(500).json({ ok: false, error: err.message });
   }
-};
-
+}
