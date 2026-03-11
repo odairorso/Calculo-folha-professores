@@ -23,7 +23,7 @@ export default function ProfessoresPage() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [nome, setNome] = useState('');
   const [cpf, setCpf] = useState('');
-  const [segId, setSegId] = useState('');
+  const [segIds, setSegIds] = useState<string[]>([]);
   const [horasSem, setHorasSem] = useState('');
   const [valorHora, setValorHora] = useState('');
   const [ajudaCusto, setAjudaCusto] = useState('');
@@ -35,7 +35,7 @@ export default function ProfessoresPage() {
   const [editHorasSem, setEditHorasSem] = useState('');
   const [editValorHora, setEditValorHora] = useState('');
   const [editAjudaCusto, setEditAjudaCusto] = useState('');
-  const [editSegId, setEditSegId] = useState('');
+  const [editSegIds, setEditSegIds] = useState<string[]>([]);
 
   useEffect(() => {
     initProfessoresFromApi();
@@ -50,15 +50,23 @@ export default function ProfessoresPage() {
   // Quando trocar o Ano na edição, preenche Valor/Hora e Ajuda de Custo somente se estiverem vazios
   useEffect(() => {
     if (!editOpen) return;
-    const seg = segmentos.find((s) => s.id === editSegId);
+    const firstSegId = editSegIds[0];
+    const seg = segmentos.find(s => s.id === firstSegId);
     if (seg) {
       if (!editValorHora) setEditValorHora(String(seg.valorHora));
       if (!editAjudaCusto) setEditAjudaCusto(String(seg.ajudaCusto));
     }
-  }, [editSegId, editOpen]);
+  }, [editSegIds, editOpen]);
+
+  const toggleSegId = (id: string) => {
+    setSegIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
+  };
+  const toggleEditSegId = (id: string) => {
+    setEditSegIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
+  };
 
   const addProfessor = () => {
-    if (!nome || !cpf || !segId) return;
+    if (!nome || !cpf || segIds.length === 0) return;
     const horasValue = parseFloat(horasSem);
     if (isNaN(horasValue) || horasValue <= 0) return;
     const valorHoraValue = parseFloat(valorHora);
@@ -69,7 +77,7 @@ export default function ProfessoresPage() {
       cpf,
       dataAdmissao: new Date().toISOString().split('T')[0],
       horasSemanais: horasValue,
-      segmentoIds: [segId],
+      segmentoIds: segIds,
       ativo: true,
       ...(isNaN(valorHoraValue) ? {} : { valorHora: valorHoraValue }),
       ...(isNaN(ajudaCustoValue) ? {} : { ajudaCusto: ajudaCustoValue }),
@@ -77,7 +85,7 @@ export default function ProfessoresPage() {
     storeAdd(newProf);
     setNome('');
     setCpf('');
-    setSegId('');
+    setSegIds([]);
     setHorasSem('');
     setValorHora('');
     setAjudaCusto('');
@@ -98,7 +106,7 @@ export default function ProfessoresPage() {
     const seg = segmentos.find(s => s.id === initialSegId);
     setEditValorHora(p.valorHora != null ? String(p.valorHora) : seg ? String(seg.valorHora) : '');
     setEditAjudaCusto(p.ajudaCusto != null ? String(p.ajudaCusto) : seg ? String(seg.ajudaCusto) : '');
-    setEditSegId(initialSegId);
+    setEditSegIds(p.segmentoIds || []);
     setEditOpen(true);
   };
 
@@ -114,7 +122,7 @@ export default function ProfessoresPage() {
     if (!isNaN(valorHoraValue) && valorHoraValue >= 0) patch.valorHora = valorHoraValue;
     const ajudaCustoValue = parseFloat(editAjudaCusto);
     if (!isNaN(ajudaCustoValue) && ajudaCustoValue >= 0) patch.ajudaCusto = ajudaCustoValue;
-    if (editSegId) patch.segmentoIds = [editSegId];
+    if (editSegIds.length > 0) patch.segmentoIds = editSegIds;
     updateProfessor(editing.id, patch);
     setEditOpen(false);
     setEditing(null);
@@ -126,14 +134,14 @@ export default function ProfessoresPage() {
     }
   };
 
-  // Prefill de valorHora e ajudaCusto a partir do segmento escolhido (Ano)
+  // Prefill de valorHora e ajudaCusto a partir do primeiro segmento escolhido
   useEffect(() => {
-    const seg = segmentos.find(s => s.id === segId);
-    if (seg) {
-      setValorHora(String(seg.valorHora));
-      setAjudaCusto(String(seg.ajudaCusto));
+    const firstSeg = segmentos.find(s => s.id === segIds[0]);
+    if (firstSeg) {
+      setValorHora(String(firstSeg.valorHora));
+      setAjudaCusto(String(firstSeg.ajudaCusto));
     }
-  }, [segId]);
+  }, [segIds]);
 
   return (
     <div>
@@ -159,15 +167,20 @@ export default function ProfessoresPage() {
                   <Input value={cpf} onChange={(e) => setCpf(e.target.value)} placeholder="000.000.000-00" />
                 </div>
                 <div>
-                  <Label>Ano</Label>
-                  <Select value={segId} onValueChange={setSegId}>
-                    <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
-                    <SelectContent>
-                      {segmentos.map((s) => (
-                        <SelectItem key={s.id} value={s.id}>{s.nome}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <Label>Segmentos (selecione um ou mais)</Label>
+                  <div className="grid grid-cols-2 gap-2 mt-2">
+                    {segmentos.map((s) => (
+                      <label key={s.id} className="flex items-center gap-2 cursor-pointer rounded-md border px-3 py-2 hover:bg-muted/50 transition-colors">
+                        <input
+                          type="checkbox"
+                          checked={segIds.includes(s.id)}
+                          onChange={() => toggleSegId(s.id)}
+                          className="rounded"
+                        />
+                        <span className="text-sm">{s.nome}</span>
+                      </label>
+                    ))}
+                  </div>
                 </div>
                 <div>
                   <Label>Horas por Semana</Label>
@@ -185,7 +198,7 @@ export default function ProfessoresPage() {
                 </div>
                 <div className="grid grid-cols-3 gap-3 text-sm rounded-md border p-3 bg-muted/30">
                   {(() => {
-                    const seg = segmentos.find(s => s.id === segId);
+                    const seg = segmentos.find(s => segIds.includes(s.id));
                     const hs = parseFloat(horasSem);
                     const vh = parseFloat(valorHora);
                     const aj = parseFloat(ajudaCusto);
@@ -448,15 +461,20 @@ export default function ProfessoresPage() {
               <Input value={editCpf} onChange={(e) => setEditCpf(e.target.value)} />
             </div>
             <div>
-              <Label>Ano</Label>
-              <Select value={editSegId} onValueChange={setEditSegId}>
-                <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
-                <SelectContent>
-                  {segmentos.map((s) => (
-                    <SelectItem key={s.id} value={s.id}>{s.nome}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Label>Segmentos (selecione um ou mais)</Label>
+              <div className="grid grid-cols-2 gap-2 mt-2">
+                {segmentos.map((s) => (
+                  <label key={s.id} className="flex items-center gap-2 cursor-pointer rounded-md border px-3 py-2 hover:bg-muted/50 transition-colors">
+                    <input
+                      type="checkbox"
+                      checked={editSegIds.includes(s.id)}
+                      onChange={() => toggleEditSegId(s.id)}
+                      className="rounded"
+                    />
+                    <span className="text-sm">{s.nome}</span>
+                  </label>
+                ))}
+              </div>
             </div>
             <div>
               <Label>Horas por Semana</Label>
@@ -473,7 +491,7 @@ export default function ProfessoresPage() {
             </div>
             <div className="grid grid-cols-3 gap-3 text-sm rounded-md border p-3 bg-muted/30">
               {(() => {
-                const seg = segmentos.find(s => s.id === editSegId);
+                const seg = segmentos.find(s => editSegIds.includes(s.id));
                 const hs = parseFloat(editHorasSem);
                 const vh = parseFloat(editValorHora);
                 const aj = parseFloat(editAjudaCusto);
