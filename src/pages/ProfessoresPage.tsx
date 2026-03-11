@@ -26,6 +26,19 @@ function round1(n: number): number {
   return Math.round(n * 10) / 10;
 }
 
+function round2(n: number): number {
+  return Math.round(n * 100) / 100;
+}
+
+function isEstagiaria(nome: string): boolean {
+  const n = nome.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+  return n.includes('estagiaria');
+}
+
+function bolsaEstagiaria(horasSemanais: number): number {
+  return round2((1000 / 30) * horasSemanais);
+}
+
 interface SegSlot {
   segId: string;
   horas: string;
@@ -221,23 +234,31 @@ export function ProfessoresPage() {
       if (!seg) return;
       const hs = toNumberBR(s.horas);
       const mensais = round1(calcularHorasMensais(hs));
-      const baseMensalSeg = calcularHorasMensais(Number(seg.horasSemanais) || 0);
-      const percHA = baseMensalSeg ? (Number(seg.horasAtividade) || 0) / baseMensalSeg : 0;
-      const ha = round1(mensais * percHA);
-      const repouso = round1((mensais + ha) * (Number(seg.percRepouso) || 1 / 6));
-      const tt = mensais + ha + repouso;
+      let ha = 0;
+      let repouso = 0;
+      let tt = mensais;
 
       tMensais += mensais;
+
+      if (isEstagiaria(seg.nome)) {
+        const bolsa = bolsaEstagiaria(hs);
+        salario += bolsa;
+        perTurma.push(`${seg.nome}: ${formatCurrency(bolsa)} (bolsa)`);
+      } else {
+        const baseMensalSeg = calcularHorasMensais(Number(seg.horasSemanais) || 0);
+        const percHA = baseMensalSeg ? (Number(seg.horasAtividade) || 0) / baseMensalSeg : 0;
+        ha = round1(mensais * percHA);
+        repouso = round1((mensais + ha) * (Number(seg.percRepouso) || 1 / 6));
+        tt = mensais + ha + repouso;
+        const valorFinal = seg.valorHora;
+        const ajudaFinal = seg.ajudaCusto;
+        salario += (tt * valorFinal) + ajudaFinal;
+        tAjuda += ajudaFinal;
+        perTurma.push(`${seg.nome}: ${formatCurrency(valorFinal)}`);
+      }
       tRepouso += repouso;
       tHA += ha;
       tHoras += tt;
-
-      // Usa sempre os valores do próprio Ano (Parâmetros), ignorando qualquer valor global do professor
-      const valorFinal = seg.valorHora;
-      const ajudaFinal = seg.ajudaCusto;
-      salario += (tt * valorFinal) + ajudaFinal;
-      tAjuda += ajudaFinal;
-      perTurma.push(`${seg.nome}: ${formatCurrency(valorFinal)}`);
     });
 
     return (
@@ -337,18 +358,25 @@ export function ProfessoresPage() {
                   if (!seg) return;
                   const hs = Number(prof.segmentoHoras?.[sid] || prof.horasSemanais || 0);
                   const mensais = round1(calcularHorasMensais(hs));
-                  const baseMensalSeg = calcularHorasMensais(Number(seg.horasSemanais) || 0);
-                  const percHA = baseMensalSeg ? (Number(seg.horasAtividade) || 0) / baseMensalSeg : 0;
-                  const ha = round1(mensais * percHA);
-                  const repouso = round1((mensais + ha) * (Number(seg.percRepouso) || 1 / 6));
-                  const tt = mensais + ha + repouso;
+                  let ha = 0;
+                  let repouso = 0;
+                  let tt = mensais;
                   sMensais += mensais;
+                  if (isEstagiaria(seg.nome)) {
+                    sPagar += bolsaEstagiaria(hs);
+                  } else {
+                    const baseMensalSeg = calcularHorasMensais(Number(seg.horasSemanais) || 0);
+                    const percHA = baseMensalSeg ? (Number(seg.horasAtividade) || 0) / baseMensalSeg : 0;
+                    ha = round1(mensais * percHA);
+                    repouso = round1((mensais + ha) * (Number(seg.percRepouso) || 1 / 6));
+                    tt = mensais + ha + repouso;
+                    const valorH = seg.valorHora;
+                    const ajuda = seg.ajudaCusto;
+                    sPagar += (tt * valorH) + ajuda;
+                  }
                   sRepouso += repouso;
                   sHA += ha;
                   sTotalHoras += tt;
-                  const valorH = seg.valorHora;
-                  const ajuda = seg.ajudaCusto;
-                  sPagar += (tt * valorH) + ajuda;
                 });
 
                 return (

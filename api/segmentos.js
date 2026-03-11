@@ -5,6 +5,11 @@ export default async function handler(req, res) {
     const sql = getSql();
 
     if (req.method === 'GET') {
+      await sql`
+        insert into segmentos (nome, horas_semanais, perc_repouso, ha_percent, valor_hora, ajuda_custo)
+        values ('Estagiária', 30, 0, 0, 0, 0)
+        on conflict (nome) do nothing
+      `;
       const segmentos = await sql`
         select id, nome, horas_semanais as "horasSemanais",
                perc_repouso as "percRepouso",
