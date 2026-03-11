@@ -247,8 +247,9 @@ export function ProfessoresPage() {
       tHA += ha;
       tHoras += tt;
 
-      const valorFinal = Number.isFinite(vh) ? vh : (isEditingParams?.valorHora ?? seg.valorHora);
-      const ajudaFinal = Number.isFinite(aj) ? aj : (isEditingParams?.ajudaCusto ?? seg.ajudaCusto);
+      // Usa sempre os valores do próprio Ano (Parâmetros), ignorando qualquer valor global do professor
+      const valorFinal = seg.valorHora;
+      const ajudaFinal = seg.ajudaCusto;
       salario += (tt * valorFinal) + ajudaFinal;
       perTurma.push(`${seg.nome}: ${formatCurrency(valorFinal)}`);
     });
