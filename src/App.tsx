@@ -5,7 +5,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AppLayout } from "@/components/AppLayout";
 import DashboardPage from "./pages/DashboardPage";
-import ProfessoresPage from "./pages/ProfessoresPage";
+import { ProfessoresPage } from "./pages/ProfessoresPage";
 import ParametrosPage from "./pages/ParametrosPage";
 import LancamentosPage from "./pages/LancamentosPage";
 import FechamentoPage from "./pages/FechamentoPage";
