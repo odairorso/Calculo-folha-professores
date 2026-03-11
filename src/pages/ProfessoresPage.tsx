@@ -23,6 +23,10 @@ function toNumberBR(v: string): number {
   return parseFloat(String(v).replace(',', '.'));
 }
 
+function round1(n: number): number {
+  return Math.round(n * 10) / 10;
+}
+
 interface SegSlot {
   segId: string;
   horas: string;
@@ -49,6 +53,13 @@ export function ProfessoresPage() {
     initProfessoresFromApi();
     initSegmentosFromApi();
   }, []);
+
+  // Quando abrir cadastro, pré-carrega todas as turmas (linhas) com horas em branco
+  useEffect(() => {
+    if (dialogOpen && segmentos.length > 0) {
+      setSlots(segmentos.map((s) => ({ segId: s.id, horas: '' })));
+    }
+  }, [dialogOpen, segmentos]);
 
   const filtered = useMemo(
     () => profs.filter((p) => p.nome.toLowerCase().includes(search.toLowerCase())),
@@ -98,14 +109,11 @@ export function ProfessoresPage() {
     setEditNome(p.nome);
     setEditCpf(p.cpf);
 
-    const newSlots: SegSlot[] = [{ segId: '', horas: '' }];
-    if (p.segmentoIds) {
-      p.segmentoIds.forEach((sid, index) => {
-        const h = p.segmentoHoras?.[sid] || p.horasSemanais || 0;
-        if (index === 0) newSlots[0] = { segId: sid, horas: h ? String(h) : '' };
-        else newSlots.push({ segId: sid, horas: h ? String(h) : '' });
-      });
-    }
+    // Pré-carrega TODAS as turmas com horas do professor (ou vazio)
+    const newSlots: SegSlot[] = segmentos.map((s) => {
+      const h = p.segmentoHoras?.[s.id] || '';
+      return { segId: s.id, horas: h ? String(h) : '' };
+    });
     setEditSlots(newSlots);
 
     const initialSegId = p.segmentoIds?.[0] ?? '';
@@ -235,11 +243,11 @@ export function ProfessoresPage() {
       const seg = segmentos.find(x => x.id === s.segId);
       if (!seg) return;
       const hs = toNumberBR(s.horas);
-      const mensais = calcularHorasMensais(hs);
+      let mensais = round1(calcularHorasMensais(hs));
       const baseMensalSeg = calcularHorasMensais(Number(seg.horasSemanais) || 0);
       const percHA = baseMensalSeg ? (Number(seg.horasAtividade) || 0) / baseMensalSeg : 0;
-      const ha = mensais * percHA;
-      const repouso = (mensais + ha) * (Number(seg.percRepouso) || 1 / 6);
+      const ha = round1(mensais * percHA);
+      const repouso = round1((mensais + ha) * (Number(seg.percRepouso) || 1 / 6));
       const tt = mensais + ha + repouso;
 
       tMensais += mensais;
