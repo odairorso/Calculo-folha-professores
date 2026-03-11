@@ -5,11 +5,10 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Search, MoreHorizontal, Pencil, Trash2, UserX, UserCheck, X } from 'lucide-react';
+import { Plus, Search, MoreHorizontal, Pencil, Trash2, UserX, UserCheck } from 'lucide-react';
 import { Professor, calcularHorasMensais } from '@/lib/types';
 import { useProfessores, addProfessor as storeAdd, updateProfessor, deleteProfessor, toggleProfessorAtivo, initProfessoresFromApi } from '@/lib/store';
 import { useSegmentos, initSegmentosFromApi } from '@/lib/segmentosStore';
@@ -161,69 +160,50 @@ export function ProfessoresPage() {
 
   // Removido prefill global no cadastro
 
-  const addSlotRow = (setFunc: (val: SegSlot[]) => void, current: SegSlot[]) => {
-    setFunc([...current, { segId: '', horas: '' }]);
-  };
-
-  const removeSlotRow = (setFunc: (val: SegSlot[]) => void, current: SegSlot[], idx: number) => {
-    const next = current.filter((_, i) => i !== idx);
-    setFunc(next.length ? next : [{ segId: '', horas: '' }]);
-  };
-
   const renderSlots = (currentSlots: SegSlot[], setFunc: (val: SegSlot[]) => void) => {
+    const getHorasBySegId = (segId: string) => currentSlots.find(s => s.segId === segId)?.horas ?? '';
+    const setHorasBySegId = (segId: string, horas: string) => {
+      const next = segmentos.map((seg) => {
+        const existing = currentSlots.find(s => s.segId === seg.id);
+        return { segId: seg.id, horas: seg.id === segId ? horas : (existing?.horas ?? '') };
+      });
+      setFunc(next);
+    };
+
     return (
-      <div className="space-y-4 mt-2 border-y py-4 my-4">
+      <div className="space-y-3 mt-2 border-y py-4 my-4">
         <Label className="text-muted-foreground font-semibold">Turmas do Professor</Label>
-        {currentSlots.map((slot, i) => (
-          <div key={i} className="space-y-3">
-            <div className="flex items-center justify-between">
-              <Label>Ano {i + 1}</Label>
-              {currentSlots.length > 1 && (
-                <Button type="button" variant="ghost" size="sm" onClick={() => removeSlotRow(setFunc, currentSlots, i)}>
-                  <X className="w-4 h-4" />
-                </Button>
-              )}
-            </div>
-            <div>
-              <Select
-                value={slot.segId || "none"}
-                onValueChange={(val) => {
-                  const newS = [...currentSlots];
-                  newS[i].segId = val === "none" ? "" : val;
-                  setFunc(newS);
-                }}
-              >
-                <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">Selecione (Nenhum)</SelectItem>
-                  {segmentos.map((s) => (
-                    <SelectItem key={s.id} value={s.id}>{s.nome}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <Label>Horas por Semana</Label>
-              <Input
-                type="number"
-                placeholder="Ex.: 10"
-                min="0.5"
-                step="0.5"
-                value={slot.horas}
-                onChange={(e) => {
-                  const newS = [...currentSlots];
-                  newS[i].horas = e.target.value;
-                  setFunc(newS);
-                }}
-                disabled={!slot.segId}
-              />
-            </div>
-          </div>
-        ))}
-        <div>
-          <Button type="button" variant="secondary" onClick={() => addSlotRow(setFunc, currentSlots)}>
-            <Plus className="w-4 h-4 mr-2" /> Adicionar turma
-          </Button>
+        <div className="rounded-md border overflow-hidden">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Ano</TableHead>
+                <TableHead>Horas S.</TableHead>
+                <TableHead>Valor</TableHead>
+                <TableHead>Ajuda</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {segmentos.map((seg) => (
+                <TableRow key={seg.id}>
+                  <TableCell className="font-medium">{seg.nome}</TableCell>
+                  <TableCell>
+                    <Input
+                      type="number"
+                      min="0"
+                      step="0.5"
+                      placeholder="0"
+                      value={getHorasBySegId(seg.id)}
+                      onChange={(e) => setHorasBySegId(seg.id, e.target.value)}
+                      className="h-8"
+                    />
+                  </TableCell>
+                  <TableCell>{formatCurrency(seg.valorHora)}</TableCell>
+                  <TableCell>{formatCurrency(seg.ajudaCusto)}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
         </div>
       </div>
     );
