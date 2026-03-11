@@ -55,7 +55,7 @@ export function AppSidebar({ mobileOpen, onCloseMobile }: AppSidebarProps) {
         </div>
         {!collapsed && (
           <div className="overflow-hidden">
-            <h1 className="text-sm font-bold tracking-tight text-sidebar-foreground">Colégio Navirá</h1>
+            <h1 className="text-sm font-bold tracking-tight text-sidebar-foreground">Colégio Naviraí</h1>
             <p className="text-[11px] text-sidebar-foreground/60">Sistema de Horas</p>
           </div>
         )}
