@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Search, MoreHorizontal, Pencil, Trash2, UserX, UserCheck } from 'lucide-react';
+import { Plus, Search, MoreHorizontal, Pencil, Trash2, UserX, UserCheck, X } from 'lucide-react';
 import { Professor, calcularHorasMensais } from '@/lib/types';
 import { useProfessores, addProfessor as storeAdd, updateProfessor, deleteProfessor, toggleProfessorAtivo, initProfessoresFromApi } from '@/lib/store';
 import { useSegmentos, initSegmentosFromApi } from '@/lib/segmentosStore';
@@ -35,25 +35,15 @@ export function ProfessoresPage() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [nome, setNome] = useState('');
   const [cpf, setCpf] = useState('');
-  const [slots, setSlots] = useState<SegSlot[]>([
-    { segId: '', horas: '' },
-    { segId: '', horas: '' },
-    { segId: '', horas: '' },
-  ]);
-  const [valorHora, setValorHora] = useState('');
-  const [ajudaCusto, setAjudaCusto] = useState('');
+  const [slots, setSlots] = useState<SegSlot[]>([{ segId: '', horas: '' }]);
+  // Removido valor/ajuda globais: cálculo sempre por turma
 
   const [editOpen, setEditOpen] = useState(false);
   const [editing, setEditing] = useState<Professor | null>(null);
   const [editNome, setEditNome] = useState('');
   const [editCpf, setEditCpf] = useState('');
-  const [editSlots, setEditSlots] = useState<SegSlot[]>([
-    { segId: '', horas: '' },
-    { segId: '', horas: '' },
-    { segId: '', horas: '' },
-  ]);
-  const [editValorHora, setEditValorHora] = useState('');
-  const [editAjudaCusto, setEditAjudaCusto] = useState('');
+  const [editSlots, setEditSlots] = useState<SegSlot[]>([{ segId: '', horas: '' }]);
+  // Removido valor/ajuda globais na edição
 
   useEffect(() => {
     initProfessoresFromApi();
@@ -65,25 +55,11 @@ export function ProfessoresPage() {
     [profs, search]
   );
 
-  // Prefill de valorHora e ajudaCusto a partir do primeiro segmento escolhido (edição)
-  useEffect(() => {
-    if (!editOpen) return;
-    const firstSegId = editSlots.find(s => s.segId)?.segId;
-    if (firstSegId) {
-      const seg = segmentos.find(s => s.id === firstSegId);
-      if (seg) {
-        if (!editValorHora) setEditValorHora(String(seg.valorHora));
-        if (!editAjudaCusto) setEditAjudaCusto(String(seg.ajudaCusto));
-      }
-    }
-  }, [editSlots, editOpen, segmentos, editValorHora, editAjudaCusto]);
+  // Sem prefill global na edição; cálculo sempre por turma
 
   const addProfessor = () => {
     const validSlots = slots.filter(s => s.segId && parseFloat(s.horas) > 0);
     if (!nome || !cpf || validSlots.length === 0) return;
-
-    const valorHoraValue = parseFloat(valorHora);
-    const ajudaCustoValue = parseFloat(ajudaCusto);
 
     const segmentoHoras: Record<string, number> = {};
     const segmentoIds: string[] = [];
@@ -104,19 +80,12 @@ export function ProfessoresPage() {
       segmentoIds,
       segmentoHoras,
       ativo: true,
-      ...(isNaN(valorHoraValue) ? {} : { valorHora: valorHoraValue }),
-      ...(isNaN(ajudaCustoValue) ? {} : { ajudaCusto: ajudaCustoValue }),
+      // Sem valor/ajuda globais
     };
     storeAdd(newProf);
     setNome('');
     setCpf('');
-    setSlots([
-      { segId: '', horas: '' },
-      { segId: '', horas: '' },
-      { segId: '', horas: '' },
-    ]);
-    setValorHora('');
-    setAjudaCusto('');
+    setSlots([{ segId: '', horas: '' }]);
     setDialogOpen(false);
   };
 
@@ -129,25 +98,19 @@ export function ProfessoresPage() {
     setEditNome(p.nome);
     setEditCpf(p.cpf);
 
-    const newSlots = [
-      { segId: '', horas: '' },
-      { segId: '', horas: '' },
-      { segId: '', horas: '' },
-    ];
+    const newSlots: SegSlot[] = [{ segId: '', horas: '' }];
     if (p.segmentoIds) {
       p.segmentoIds.forEach((sid, index) => {
-        if (index < 3) {
-          const h = p.segmentoHoras?.[sid] || p.horasSemanais || 0;
-          newSlots[index] = { segId: sid, horas: h ? String(h) : '' };
-        }
+        const h = p.segmentoHoras?.[sid] || p.horasSemanais || 0;
+        if (index === 0) newSlots[0] = { segId: sid, horas: h ? String(h) : '' };
+        else newSlots.push({ segId: sid, horas: h ? String(h) : '' });
       });
     }
     setEditSlots(newSlots);
 
     const initialSegId = p.segmentoIds?.[0] ?? '';
     const seg = segmentos.find(s => s.id === initialSegId);
-    setEditValorHora(p.valorHora != null ? String(p.valorHora) : (seg ? String(seg.valorHora) : ''));
-    setEditAjudaCusto(p.ajudaCusto != null ? String(p.ajudaCusto) : (seg ? String(seg.ajudaCusto) : ''));
+    // Sem campos globais na edição
     setEditOpen(true);
   };
 
@@ -175,10 +138,7 @@ export function ProfessoresPage() {
       patch.horasSemanais = undefined; // Limpar legado
     }
 
-    const valorHoraValue = parseFloat(editValorHora);
-    if (!isNaN(valorHoraValue) && valorHoraValue >= 0) patch.valorHora = valorHoraValue;
-    const ajudaCustoValue = parseFloat(editAjudaCusto);
-    if (!isNaN(ajudaCustoValue) && ajudaCustoValue >= 0) patch.ajudaCusto = ajudaCustoValue;
+    // Não atualiza valor/ajuda globais via edição
 
     updateProfessor(editing.id, patch);
     setEditOpen(false);
@@ -191,32 +151,34 @@ export function ProfessoresPage() {
     }
   };
 
-  // Prefill (cadastro): só quando houver exatamente 1 turma selecionada e campos estiverem vazios
-  useEffect(() => {
-    const selected = slots.filter(s => s.segId);
-    if (selected.length === 1 && !valorHora && !ajudaCusto) {
-      const seg = segmentos.find(s => s.id === selected[0].segId);
-      if (seg) {
-        setValorHora(String(seg.valorHora));
-        setAjudaCusto(String(seg.ajudaCusto));
-      }
-    }
-    // Se mais de uma turma, não preenche para evitar valor global fixo
-    if (selected.length !== 1) {
-      // mantém como está; usuário pode optar por informar global manualmente
-    }
-  }, [slots, segmentos, valorHora, ajudaCusto]);
+  // Removido prefill global no cadastro
+
+  const addSlotRow = (setFunc: (val: SegSlot[]) => void, current: SegSlot[]) => {
+    setFunc([...current, { segId: '', horas: '' }]);
+  };
+
+  const removeSlotRow = (setFunc: (val: SegSlot[]) => void, current: SegSlot[], idx: number) => {
+    const next = current.filter((_, i) => i !== idx);
+    setFunc(next.length ? next : [{ segId: '', horas: '' }]);
+  };
 
   const renderSlots = (currentSlots: SegSlot[], setFunc: (val: SegSlot[]) => void) => {
     return (
-      <div className="space-y-6 mt-2 border-y py-4 my-4">
+      <div className="space-y-4 mt-2 border-y py-4 my-4">
         <Label className="text-muted-foreground font-semibold">Turmas do Professor</Label>
-        {[0, 1, 2].map((i) => (
-          <div key={i} className="space-y-4">
-            <div>
+        {currentSlots.map((slot, i) => (
+          <div key={i} className="space-y-3">
+            <div className="flex items-center justify-between">
               <Label>Ano {i + 1}</Label>
+              {currentSlots.length > 1 && (
+                <Button type="button" variant="ghost" size="sm" onClick={() => removeSlotRow(setFunc, currentSlots, i)}>
+                  <X className="w-4 h-4" />
+                </Button>
+              )}
+            </div>
+            <div>
               <Select
-                value={currentSlots[i].segId || "none"}
+                value={slot.segId || "none"}
                 onValueChange={(val) => {
                   const newS = [...currentSlots];
                   newS[i].segId = val === "none" ? "" : val;
@@ -239,17 +201,22 @@ export function ProfessoresPage() {
                 placeholder="Ex.: 10"
                 min="0.5"
                 step="0.5"
-                value={currentSlots[i].horas}
+                value={slot.horas}
                 onChange={(e) => {
                   const newS = [...currentSlots];
                   newS[i].horas = e.target.value;
                   setFunc(newS);
                 }}
-                disabled={!currentSlots[i].segId}
+                disabled={!slot.segId}
               />
             </div>
           </div>
         ))}
+        <div>
+          <Button type="button" variant="secondary" onClick={() => addSlotRow(setFunc, currentSlots)}>
+            <Plus className="w-4 h-4 mr-2" /> Adicionar turma
+          </Button>
+        </div>
       </div>
     );
   };
@@ -293,9 +260,13 @@ export function ProfessoresPage() {
         <div><span className="text-muted-foreground">H.A.:</span> {tHA.toFixed(1)}h</div>
         <div><span className="text-muted-foreground">Total Hrs:</span> {tHoras.toFixed(1)}h</div>
         <div><span className="text-muted-foreground">A. Custo:</span> {formatCurrency(Number.isFinite(aj) ? aj : 0)}</div>
-        <div>
-          <span className="text-muted-foreground">Vr/Hora:</span>{' '}
-          {Number.isFinite(vh) ? formatCurrency(vh) : perTurma.join(' · ')}
+        <div className="col-span-3">
+          <span className="text-muted-foreground">Vr/Hora por turma:</span>
+          <div className="mt-1 grid grid-cols-1 gap-1">
+            {perTurma.map((t, i) => (
+              <div key={i} className="text-xs whitespace-normal break-words">{t}</div>
+            ))}
+          </div>
         </div>
         <div className="col-span-3 pt-2 mt-1 border-t border-border/50 text-base">
           <span className="text-muted-foreground">T. a Pagar:</span> <span className="font-semibold text-primary ml-2">{formatCurrency(salario)}</span>
@@ -329,30 +300,9 @@ export function ProfessoresPage() {
                 </div>
 
                 {renderSlots(slots, setSlots)}
-                {renderPreview(slots, valorHora, ajudaCusto)}
+                {renderPreview(slots, '', '')}
 
-                <div>
-                  <Label>Valor Hora Aula Global (opcional)</Label>
-                  <Input
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    value={valorHora}
-                    onChange={(e) => setValorHora(e.target.value)}
-                    placeholder="Deixe em branco para usar o padrão da turma"
-                  />
-                </div>
-                <div>
-                  <Label>Ajuda de Custo Global (opcional)</Label>
-                  <Input
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    value={ajudaCusto}
-                    onChange={(e) => setAjudaCusto(e.target.value)}
-                    placeholder="Padrão da turma"
-                  />
-                </div>
+                {/* Removidos campos globais */}
                 <Button onClick={addProfessor} className="w-full">Cadastrar</Button>
               </div>
             </DialogContent>
@@ -489,28 +439,9 @@ export function ProfessoresPage() {
             </div>
 
             {renderSlots(editSlots, setEditSlots)}
-            {renderPreview(editSlots, editValorHora, editAjudaCusto, editing!)}
+            {renderPreview(editSlots, '', '', editing!)}
 
-            <div>
-              <Label>Valor Hora Aula Global</Label>
-              <Input
-                type="number"
-                min="0"
-                step="0.01"
-                value={editValorHora}
-                onChange={(e) => setEditValorHora(e.target.value)}
-              />
-            </div>
-            <div>
-              <Label>Ajuda de Custo Global</Label>
-              <Input
-                type="number"
-                min="0"
-                step="0.01"
-                value={editAjudaCusto}
-                onChange={(e) => setEditAjudaCusto(e.target.value)}
-              />
-            </div>
+            {/* Removidos campos globais na edição */}
             <div className="flex gap-2">
               <Button className="flex-1" onClick={saveEdit}>Salvar</Button>
             </div>
