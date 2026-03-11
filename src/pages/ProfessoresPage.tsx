@@ -186,17 +186,21 @@ export function ProfessoresPage() {
     }
   };
 
-  // Prefill de valorHora e ajudaCusto a partir do primeiro segmento escolhido (cadastro)
+  // Prefill (cadastro): só quando houver exatamente 1 turma selecionada e campos estiverem vazios
   useEffect(() => {
-    const firstSegId = slots.find(s => s.segId)?.segId;
-    if (firstSegId) {
-      const seg = segmentos.find(s => s.id === firstSegId);
+    const selected = slots.filter(s => s.segId);
+    if (selected.length === 1 && !valorHora && !ajudaCusto) {
+      const seg = segmentos.find(s => s.id === selected[0].segId);
       if (seg) {
         setValorHora(String(seg.valorHora));
         setAjudaCusto(String(seg.ajudaCusto));
       }
     }
-  }, [slots, segmentos]);
+    // Se mais de uma turma, não preenche para evitar valor global fixo
+    if (selected.length !== 1) {
+      // mantém como está; usuário pode optar por informar global manualmente
+    }
+  }, [slots, segmentos, valorHora, ajudaCusto]);
 
   const renderSlots = (currentSlots: SegSlot[], setFunc: (val: SegSlot[]) => void) => {
     return (
@@ -280,8 +284,8 @@ export function ProfessoresPage() {
         <div><span className="text-muted-foreground">Repouso:</span> {tRepouso.toFixed(1)}h</div>
         <div><span className="text-muted-foreground">H.A.:</span> {tHA.toFixed(1)}h</div>
         <div><span className="text-muted-foreground">Total Hrs:</span> {tHoras.toFixed(1)}h</div>
-        <div><span className="text-muted-foreground">A. Custo:</span> {formatCurrency(Number.isFinite(aj) ? aj : (valid.length > 0 ? (segmentos.find(s => s.id === valid[0].segId)?.ajudaCusto || 0) : 0))}</div>
-        <div><span className="text-muted-foreground">Vr/Hora:</span> {formatCurrency(Number.isFinite(vh) ? vh : (valid.length > 0 ? (segmentos.find(s => s.id === valid[0].segId)?.valorHora || 0) : 0))}</div>
+        <div><span className="text-muted-foreground">A. Custo:</span> {formatCurrency(Number.isFinite(aj) ? aj : 0)}</div>
+        <div><span className="text-muted-foreground">Vr/Hora:</span> {Number.isFinite(vh) ? formatCurrency(vh) : 'por turma'}</div>
         <div className="col-span-3 pt-2 mt-1 border-t border-border/50 text-base">
           <span className="text-muted-foreground">T. a Pagar:</span> <span className="font-semibold text-primary ml-2">{formatCurrency(salario)}</span>
         </div>
