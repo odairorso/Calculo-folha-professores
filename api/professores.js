@@ -6,7 +6,6 @@ export default async function handler(req, res) {
     if (req.method === 'GET') {
       const profs = await sql`
         select id, nome, cpf, data_admissao as "dataAdmissao",
-               horas_semanais as "horasSemanais",
                valor_hora as "valorHora",
                ajuda_custo as "ajudaCusto",
                ativo
@@ -14,16 +13,21 @@ export default async function handler(req, res) {
         order by nome
       `;
       const links = await sql`
-        select professor_id as "professorId", segmento_id as "segmentoId"
+        select professor_id as "professorId",
+               segmento_id as "segmentoId",
+               horas_semanais as "horasSemanais"
         from professor_segmentos
       `;
       const byProf = new Map();
       for (const p of profs) {
-        byProf.set(p.id, { ...p, segmentoIds: [] });
+        byProf.set(p.id, { ...p, segmentoIds: [], segmentoHoras: {} });
       }
       for (const l of links) {
         const item = byProf.get(l.professorId);
-        if (item) item.segmentoIds.push(l.segmentoId);
+        if (item) {
+          item.segmentoIds.push(l.segmentoId);
+          item.segmentoHoras[l.segmentoId] = Number(l.horasSemanais) || 0;
+        }
       }
       res.status(200).json(Array.from(byProf.values()));
       return;
@@ -31,30 +35,33 @@ export default async function handler(req, res) {
 
     if (req.method === 'POST') {
       const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : req.body || {};
-      const {
-        nome, cpf, dataAdmissao, horasSemanais, valorHora, ajudaCusto, segmentoId,
-      } = body;
-      if (!nome || !cpf || !segmentoId || !horasSemanais) {
-        res.status(400).json({ error: 'nome, cpf, segmentoId e horasSemanais são obrigatórios' });
+      const { nome, cpf, dataAdmissao, valorHora, ajudaCusto, segmentos: segsInput } = body;
+      // segsInput = [{ segmentoId, horasSemanais }, ...]
+      if (!nome || !cpf || !segsInput || segsInput.length === 0) {
+        res.status(400).json({ error: 'nome, cpf e ao menos um segmento são obrigatórios' });
         return;
       }
       const inserted = await sql`
-        insert into professores (nome, cpf, data_admissao, horas_semanais, valor_hora, ajuda_custo, ativo)
-        values (${nome}, ${cpf}, ${dataAdmissao || new Date()}, ${horasSemanais}, ${valorHora || null}, ${ajudaCusto || 0}, true)
+        insert into professores (nome, cpf, data_admissao, valor_hora, ajuda_custo, ativo)
+        values (${nome}, ${cpf}, ${dataAdmissao || new Date()}, ${valorHora || null}, ${ajudaCusto || 0}, true)
         returning id
       `;
       const id = inserted[0].id;
-      await sql`
-        insert into professor_segmentos (professor_id, segmento_id)
-        values (${id}, ${segmentoId})
-      `;
+      for (const s of segsInput) {
+        if (s.segmentoId) {
+          await sql`
+            insert into professor_segmentos (professor_id, segmento_id, horas_semanais)
+            values (${id}, ${s.segmentoId}, ${s.horasSemanais || 0})
+          `;
+        }
+      }
       res.status(201).json({ id });
       return;
     }
 
     if (req.method === 'PATCH' || req.method === 'PUT') {
       const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : req.body || {};
-      const { id, nome, cpf, dataAdmissao, horasSemanais, valorHora, ajudaCusto, ativo, segmentoId } = body;
+      const { id, nome, cpf, dataAdmissao, valorHora, ajudaCusto, ativo, segmentos: segsInput } = body;
       if (!id) {
         res.status(400).json({ error: 'id é obrigatório' });
         return;
@@ -62,13 +69,20 @@ export default async function handler(req, res) {
       if (nome != null) await sql`update professores set nome = ${nome} where id = ${id}`;
       if (cpf != null) await sql`update professores set cpf = ${cpf} where id = ${id}`;
       if (dataAdmissao != null) await sql`update professores set data_admissao = ${dataAdmissao} where id = ${id}`;
-      if (horasSemanais != null) await sql`update professores set horas_semanais = ${horasSemanais} where id = ${id}`;
       if (valorHora != null) await sql`update professores set valor_hora = ${valorHora} where id = ${id}`;
       if (ajudaCusto != null) await sql`update professores set ajuda_custo = ${ajudaCusto} where id = ${id}`;
       if (ativo != null) await sql`update professores set ativo = ${ativo} where id = ${id}`;
-      if (segmentoId != null) {
+      // Atualizar segmentos: apaga todos e reinsere
+      if (segsInput != null) {
         await sql`delete from professor_segmentos where professor_id = ${id}`;
-        await sql`insert into professor_segmentos (professor_id, segmento_id) values (${id}, ${segmentoId})`;
+        for (const s of segsInput) {
+          if (s.segmentoId) {
+            await sql`
+              insert into professor_segmentos (professor_id, segmento_id, horas_semanais)
+              values (${id}, ${s.segmentoId}, ${s.horasSemanais || 0})
+            `;
+          }
+        }
       }
       res.status(204).end();
       return;

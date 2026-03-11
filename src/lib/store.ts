@@ -15,14 +15,22 @@ export async function initProfessoresFromApi() {
     const r = await fetch('/api/professores');
     if (r.ok) {
       const data = await r.json();
-      // PostgreSQL NUMERIC retorna strings — converter para numbers
-      professoresStore = data.map((p: any) => ({
-        ...p,
-        horasSemanais: p.horasSemanais != null ? Number(p.horasSemanais) : undefined,
-        valorHora: p.valorHora != null ? Number(p.valorHora) : undefined,
-        ajudaCusto: p.ajudaCusto != null ? Number(p.ajudaCusto) : undefined,
-        ativo: typeof p.ativo === 'boolean' ? p.ativo : p.ativo === true || p.ativo === 'true',
-      })) as Professor[];
+      professoresStore = data.map((p: any) => {
+        // segmentoHoras vem como { segmentoId: "horasString" }
+        const segmentoHoras: Record<string, number> = {};
+        if (p.segmentoHoras) {
+          for (const [k, v] of Object.entries(p.segmentoHoras)) {
+            segmentoHoras[k] = Number(v) || 0;
+          }
+        }
+        return {
+          ...p,
+          segmentoHoras,
+          valorHora: p.valorHora != null ? Number(p.valorHora) : undefined,
+          ajudaCusto: p.ajudaCusto != null ? Number(p.ajudaCusto) : undefined,
+          ativo: typeof p.ativo === 'boolean' ? p.ativo : p.ativo === true || p.ativo === 'true',
+        };
+      }) as Professor[];
       notify();
     }
   } catch {
@@ -32,14 +40,19 @@ export async function initProfessoresFromApi() {
 
 export async function addProfessor(p: Professor) {
   try {
+    // Montar array de segmentos com horas individuais
+    const segmentos = p.segmentoIds.map(sid => ({
+      segmentoId: sid,
+      horasSemanais: p.segmentoHoras?.[sid] || 0,
+    })).filter(s => s.segmentoId);
+
     const body = {
       nome: p.nome,
       cpf: p.cpf,
       dataAdmissao: p.dataAdmissao,
-      horasSemanais: p.horasSemanais,
       valorHora: p.valorHora ?? null,
       ajudaCusto: p.ajudaCusto ?? 0,
-      segmentoId: p.segmentoIds?.[0],
+      segmentos,
     };
     const r = await fetch('/api/professores', {
       method: 'POST',
@@ -64,11 +77,16 @@ export async function updateProfessor(id: string, patch: Partial<Professor>) {
     if (patch.nome != null) body.nome = patch.nome;
     if (patch.cpf != null) body.cpf = patch.cpf;
     if (patch.dataAdmissao != null) body.dataAdmissao = patch.dataAdmissao;
-    if (patch.horasSemanais != null) body.horasSemanais = patch.horasSemanais;
     if (patch.valorHora != null) body.valorHora = patch.valorHora;
     if (patch.ajudaCusto != null) body.ajudaCusto = patch.ajudaCusto;
     if (patch.ativo != null) body.ativo = patch.ativo;
-    if (patch.segmentoIds && patch.segmentoIds.length > 0) body.segmentoId = patch.segmentoIds[0];
+    // Enviar segmentos com horas individuais
+    if (patch.segmentoIds && patch.segmentoHoras) {
+      body.segmentos = patch.segmentoIds.map(sid => ({
+        segmentoId: sid,
+        horasSemanais: patch.segmentoHoras?.[sid] || 0,
+      })).filter((s: any) => s.segmentoId);
+    }
     await fetch('/api/professores', {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },

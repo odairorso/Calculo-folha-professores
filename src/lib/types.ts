@@ -13,7 +13,8 @@ export interface Professor {
   nome: string;
   cpf: string;
   dataAdmissao: string;
-  horasSemanais?: number;
+  horasSemanais?: number; // mantido para compat — mas agora vem de segmentoHoras
+  segmentoHoras?: Record<string, number>; // segmentoId -> horas por semana
   valorHora?: number;
   ajudaCusto?: number;
   segmentoIds: string[];
@@ -73,7 +74,7 @@ export function gerarLancamento(
   competencia: string
 ): Omit<Lancamento, 'id'> {
   // Forçar Number() pois PostgreSQL NUMERIC retorna strings
-  const horasBaseSemanais = Number(professor.horasSemanais ?? segmento.horasSemanais) || 0;
+  const horasBaseSemanais = Number(professor.segmentoHoras?.[segmento.id]) || Number(professor.horasSemanais) || Number(segmento.horasSemanais) || 0;
   const horasMensais = calcularHorasMensais(horasBaseSemanais);
   const percHA = calcularPercentualHA(segmento);
   const horasAtividade = Number((horasMensais * percHA).toFixed(2));

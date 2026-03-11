@@ -1,30 +1,40 @@
 import { useState, useMemo, useEffect } from 'react';
 import { PageHeader } from '@/components/PageHeader';
-import { formatCurrency } from '@/lib/mockData';
-import { useSegmentos, initSegmentosFromApi } from '@/lib/segmentosStore';
-import { Professor } from '@/lib/types';
-import { calcularHorasMensais } from '@/lib/types';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { Plus, Search, UserCheck, UserX, Pencil, Trash2, MoreHorizontal } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { addProfessor as storeAdd, useProfessores, toggleProfessorAtivo, updateProfessor, deleteProfessor, initProfessoresFromApi } from '@/lib/store';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { Badge } from '@/components/ui/badge';
+import { Plus, Search, MoreHorizontal, Pencil, Trash2, UserX, UserCheck } from 'lucide-react';
+import { Professor, calcularHorasMensais } from '@/lib/types';
+import { useProfessores, addProfessor as storeAdd, updateProfessor, deleteProfessor, toggleProfessorAtivo, initProfessoresFromApi } from '@/lib/store';
+import { useSegmentos, initSegmentosFromApi } from '@/lib/segmentosStore';
 
-export default function ProfessoresPage() {
+function formatCurrency(value: number) {
+  return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
+}
+
+interface SegSlot {
+  segId: string;
+  horas: string;
+}
+
+export function ProfessoresPage() {
   const segmentos = useSegmentos();
   const profs = useProfessores();
   const [search, setSearch] = useState('');
   const [dialogOpen, setDialogOpen] = useState(false);
   const [nome, setNome] = useState('');
   const [cpf, setCpf] = useState('');
-  const [segIds, setSegIds] = useState<string[]>([]);
-  const [horasSem, setHorasSem] = useState('');
+  const [slots, setSlots] = useState<SegSlot[]>([
+    { segId: '', horas: '' },
+    { segId: '', horas: '' },
+    { segId: '', horas: '' },
+  ]);
   const [valorHora, setValorHora] = useState('');
   const [ajudaCusto, setAjudaCusto] = useState('');
 
@@ -32,10 +42,13 @@ export default function ProfessoresPage() {
   const [editing, setEditing] = useState<Professor | null>(null);
   const [editNome, setEditNome] = useState('');
   const [editCpf, setEditCpf] = useState('');
-  const [editHorasSem, setEditHorasSem] = useState('');
+  const [editSlots, setEditSlots] = useState<SegSlot[]>([
+    { segId: '', horas: '' },
+    { segId: '', horas: '' },
+    { segId: '', horas: '' },
+  ]);
   const [editValorHora, setEditValorHora] = useState('');
   const [editAjudaCusto, setEditAjudaCusto] = useState('');
-  const [editSegIds, setEditSegIds] = useState<string[]>([]);
 
   useEffect(() => {
     initProfessoresFromApi();
@@ -47,37 +60,44 @@ export default function ProfessoresPage() {
     [profs, search]
   );
 
-  // Quando trocar o Ano na edição, preenche Valor/Hora e Ajuda de Custo somente se estiverem vazios
+  // Prefill de valorHora e ajudaCusto a partir do primeiro segmento escolhido (edição)
   useEffect(() => {
     if (!editOpen) return;
-    const firstSegId = editSegIds[0];
-    const seg = segmentos.find(s => s.id === firstSegId);
-    if (seg) {
-      if (!editValorHora) setEditValorHora(String(seg.valorHora));
-      if (!editAjudaCusto) setEditAjudaCusto(String(seg.ajudaCusto));
+    const firstSegId = editSlots.find(s => s.segId)?.segId;
+    if (firstSegId) {
+      const seg = segmentos.find(s => s.id === firstSegId);
+      if (seg) {
+        if (!editValorHora) setEditValorHora(String(seg.valorHora));
+        if (!editAjudaCusto) setEditAjudaCusto(String(seg.ajudaCusto));
+      }
     }
-  }, [editSegIds, editOpen]);
-
-  const toggleSegId = (id: string) => {
-    setSegIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
-  };
-  const toggleEditSegId = (id: string) => {
-    setEditSegIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
-  };
+  }, [editSlots, editOpen, segmentos, editValorHora, editAjudaCusto]);
 
   const addProfessor = () => {
-    if (!nome || !cpf || segIds.length === 0) return;
-    const horasValue = parseFloat(horasSem);
-    if (isNaN(horasValue) || horasValue <= 0) return;
+    const validSlots = slots.filter(s => s.segId && parseFloat(s.horas) > 0);
+    if (!nome || !cpf || validSlots.length === 0) return;
+
     const valorHoraValue = parseFloat(valorHora);
     const ajudaCustoValue = parseFloat(ajudaCusto);
+
+    const segmentoHoras: Record<string, number> = {};
+    const segmentoIds: string[] = [];
+    validSlots.forEach(s => {
+      if (!segmentoIds.includes(s.segId)) {
+        segmentoIds.push(s.segId);
+        segmentoHoras[s.segId] = parseFloat(s.horas);
+      } else {
+        segmentoHoras[s.segId] += parseFloat(s.horas);
+      }
+    });
+
     const newProf: Professor = {
       id: `p${Date.now()}`,
       nome,
       cpf,
       dataAdmissao: new Date().toISOString().split('T')[0],
-      horasSemanais: horasValue,
-      segmentoIds: segIds,
+      segmentoIds,
+      segmentoHoras,
       ativo: true,
       ...(isNaN(valorHoraValue) ? {} : { valorHora: valorHoraValue }),
       ...(isNaN(ajudaCustoValue) ? {} : { ajudaCusto: ajudaCustoValue }),
@@ -85,8 +105,11 @@ export default function ProfessoresPage() {
     storeAdd(newProf);
     setNome('');
     setCpf('');
-    setSegIds([]);
-    setHorasSem('');
+    setSlots([
+      { segId: '', horas: '' },
+      { segId: '', horas: '' },
+      { segId: '', horas: '' },
+    ]);
     setValorHora('');
     setAjudaCusto('');
     setDialogOpen(false);
@@ -100,13 +123,26 @@ export default function ProfessoresPage() {
     setEditing(p);
     setEditNome(p.nome);
     setEditCpf(p.cpf);
-    setEditHorasSem(p.horasSemanais ? String(p.horasSemanais) : '');
-    // Prefill inicial baseado no primeiro Ano do professor
+
+    const newSlots = [
+      { segId: '', horas: '' },
+      { segId: '', horas: '' },
+      { segId: '', horas: '' },
+    ];
+    if (p.segmentoIds) {
+      p.segmentoIds.forEach((sid, index) => {
+        if (index < 3) {
+          const h = p.segmentoHoras?.[sid] || p.horasSemanais || 0;
+          newSlots[index] = { segId: sid, horas: h ? String(h) : '' };
+        }
+      });
+    }
+    setEditSlots(newSlots);
+
     const initialSegId = p.segmentoIds?.[0] ?? '';
     const seg = segmentos.find(s => s.id === initialSegId);
-    setEditValorHora(p.valorHora != null ? String(p.valorHora) : seg ? String(seg.valorHora) : '');
-    setEditAjudaCusto(p.ajudaCusto != null ? String(p.ajudaCusto) : seg ? String(seg.ajudaCusto) : '');
-    setEditSegIds(p.segmentoIds || []);
+    setEditValorHora(p.valorHora != null ? String(p.valorHora) : (seg ? String(seg.valorHora) : ''));
+    setEditAjudaCusto(p.ajudaCusto != null ? String(p.ajudaCusto) : (seg ? String(seg.ajudaCusto) : ''));
     setEditOpen(true);
   };
 
@@ -116,13 +152,29 @@ export default function ProfessoresPage() {
       nome: editNome || editing.nome,
       cpf: editCpf || editing.cpf,
     };
-    const horasValue = parseFloat(editHorasSem);
-    if (!isNaN(horasValue) && horasValue > 0) patch.horasSemanais = horasValue;
+
+    const validSlots = editSlots.filter(s => s.segId && parseFloat(s.horas) > 0);
+    if (validSlots.length > 0) {
+      const segmentoHoras: Record<string, number> = {};
+      const segmentoIds: string[] = [];
+      validSlots.forEach(s => {
+        if (!segmentoIds.includes(s.segId)) {
+          segmentoIds.push(s.segId);
+          segmentoHoras[s.segId] = parseFloat(s.horas);
+        } else {
+          segmentoHoras[s.segId] += parseFloat(s.horas);
+        }
+      });
+      patch.segmentoIds = segmentoIds;
+      patch.segmentoHoras = segmentoHoras;
+      patch.horasSemanais = undefined; // Limpar legado
+    }
+
     const valorHoraValue = parseFloat(editValorHora);
     if (!isNaN(valorHoraValue) && valorHoraValue >= 0) patch.valorHora = valorHoraValue;
     const ajudaCustoValue = parseFloat(editAjudaCusto);
     if (!isNaN(ajudaCustoValue) && ajudaCustoValue >= 0) patch.ajudaCusto = ajudaCustoValue;
-    if (editSegIds.length > 0) patch.segmentoIds = editSegIds;
+
     updateProfessor(editing.id, patch);
     setEditOpen(false);
     setEditing(null);
@@ -134,14 +186,108 @@ export default function ProfessoresPage() {
     }
   };
 
-  // Prefill de valorHora e ajudaCusto a partir do primeiro segmento escolhido
+  // Prefill de valorHora e ajudaCusto a partir do primeiro segmento escolhido (cadastro)
   useEffect(() => {
-    const firstSeg = segmentos.find(s => s.id === segIds[0]);
-    if (firstSeg) {
-      setValorHora(String(firstSeg.valorHora));
-      setAjudaCusto(String(firstSeg.ajudaCusto));
+    const firstSegId = slots.find(s => s.segId)?.segId;
+    if (firstSegId) {
+      const seg = segmentos.find(s => s.id === firstSegId);
+      if (seg) {
+        setValorHora(String(seg.valorHora));
+        setAjudaCusto(String(seg.ajudaCusto));
+      }
     }
-  }, [segIds]);
+  }, [slots, segmentos]);
+
+  const renderSlots = (currentSlots: SegSlot[], setFunc: (val: SegSlot[]) => void) => {
+    return (
+      <div className="space-y-6 mt-2 border-y py-4 my-4">
+        <Label className="text-muted-foreground font-semibold">Turmas do Professor</Label>
+        {[0, 1, 2].map((i) => (
+          <div key={i} className="space-y-4">
+            <div>
+              <Label>Ano {i + 1}</Label>
+              <Select
+                value={currentSlots[i].segId || "none"}
+                onValueChange={(val) => {
+                  const newS = [...currentSlots];
+                  newS[i].segId = val === "none" ? "" : val;
+                  setFunc(newS);
+                }}
+              >
+                <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Selecione (Nenhum)</SelectItem>
+                  {segmentos.map((s) => (
+                    <SelectItem key={s.id} value={s.id}>{s.nome}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label>Horas por Semana</Label>
+              <Input
+                type="number"
+                placeholder="Ex.: 10"
+                min="0.5"
+                step="0.5"
+                value={currentSlots[i].horas}
+                onChange={(e) => {
+                  const newS = [...currentSlots];
+                  newS[i].horas = e.target.value;
+                  setFunc(newS);
+                }}
+                disabled={!currentSlots[i].segId}
+              />
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+  };
+
+  const renderPreview = (currentSlots: SegSlot[], vHora: string, aCusto: string, isEditingParams?: Professor) => {
+    const valid = currentSlots.filter(s => s.segId && parseFloat(s.horas) > 0);
+    if (valid.length === 0) return <div className="text-muted-foreground">Selecione ao menos 1 turma com horas para ver o preview</div>;
+
+    let tMensais = 0, tRepouso = 0, tHA = 0, tHoras = 0, salario = 0;
+    const vh = parseFloat(vHora);
+    const aj = parseFloat(aCusto);
+
+    valid.forEach(s => {
+      const seg = segmentos.find(x => x.id === s.segId);
+      if (!seg) return;
+      const hs = parseFloat(s.horas);
+      const mensais = calcularHorasMensais(hs);
+      const baseMensalSeg = calcularHorasMensais(Number(seg.horasSemanais) || 0);
+      const percHA = baseMensalSeg ? (Number(seg.horasAtividade) || 0) / baseMensalSeg : 0;
+      const ha = mensais * percHA;
+      const repouso = (mensais + ha) * (Number(seg.percRepouso) || 1 / 6);
+      const tt = mensais + ha + repouso;
+
+      tMensais += mensais;
+      tRepouso += repouso;
+      tHA += ha;
+      tHoras += tt;
+
+      const valorFinal = Number.isFinite(vh) ? vh : (isEditingParams?.valorHora ?? seg.valorHora);
+      const ajudaFinal = Number.isFinite(aj) ? aj : (isEditingParams?.ajudaCusto ?? seg.ajudaCusto);
+      salario += (tt * valorFinal) + ajudaFinal;
+    });
+
+    return (
+      <div className="grid grid-cols-3 gap-3 text-sm rounded-md border p-3 bg-muted/30 mt-2">
+        <div><span className="text-muted-foreground">Mensal:</span> {tMensais.toFixed(1)}h</div>
+        <div><span className="text-muted-foreground">Repouso:</span> {tRepouso.toFixed(1)}h</div>
+        <div><span className="text-muted-foreground">H.A.:</span> {tHA.toFixed(1)}h</div>
+        <div><span className="text-muted-foreground">Total Hrs:</span> {tHoras.toFixed(1)}h</div>
+        <div><span className="text-muted-foreground">A. Custo:</span> {formatCurrency(Number.isFinite(aj) ? aj : (valid.length > 0 ? (segmentos.find(s => s.id === valid[0].segId)?.ajudaCusto || 0) : 0))}</div>
+        <div><span className="text-muted-foreground">Vr/Hora:</span> {formatCurrency(Number.isFinite(vh) ? vh : (valid.length > 0 ? (segmentos.find(s => s.id === valid[0].segId)?.valorHora || 0) : 0))}</div>
+        <div className="col-span-3 pt-2 mt-1 border-t border-border/50 text-base">
+          <span className="text-muted-foreground">T. a Pagar:</span> <span className="font-semibold text-primary ml-2">{formatCurrency(salario)}</span>
+        </div>
+      </div>
+    );
+  };
 
   return (
     <div>
@@ -153,7 +299,7 @@ export default function ProfessoresPage() {
             <DialogTrigger asChild>
               <Button><Plus className="w-4 h-4 mr-2" />Novo Professor</Button>
             </DialogTrigger>
-            <DialogContent>
+            <DialogContent className="max-w-md">
               <DialogHeader>
                 <DialogTitle>Cadastrar Professor</DialogTitle>
               </DialogHeader>
@@ -166,83 +312,30 @@ export default function ProfessoresPage() {
                   <Label>CPF</Label>
                   <Input value={cpf} onChange={(e) => setCpf(e.target.value)} placeholder="000.000.000-00" />
                 </div>
+
+                {renderSlots(slots, setSlots)}
+                {renderPreview(slots, valorHora, ajudaCusto)}
+
                 <div>
-                  <Label>Segmentos (selecione um ou mais)</Label>
-                  <div className="grid grid-cols-2 gap-2 mt-2">
-                    {segmentos.map((s) => (
-                      <label key={s.id} className="flex items-center gap-2 cursor-pointer rounded-md border px-3 py-2 hover:bg-muted/50 transition-colors">
-                        <input
-                          type="checkbox"
-                          checked={segIds.includes(s.id)}
-                          onChange={() => toggleSegId(s.id)}
-                          className="rounded"
-                        />
-                        <span className="text-sm">{s.nome}</span>
-                      </label>
-                    ))}
-                  </div>
-                </div>
-                <div>
-                  <Label>Horas por Semana</Label>
-                  <Input
-                    type="number"
-                    min="1"
-                    step="0.5"
-                    value={horasSem}
-                    onChange={(e) => setHorasSem(e.target.value)}
-                    placeholder="Ex.: 10"
-                  />
-                </div>
-                <div className="text-sm text-muted-foreground">
-                  Hrs Mensais (auto): {Number.isFinite(parseFloat(horasSem)) ? (parseFloat(horasSem) * 4.5).toFixed(1) : '-'}
-                </div>
-                <div className="grid grid-cols-3 gap-3 text-sm rounded-md border p-3 bg-muted/30">
-                  {(() => {
-                    const seg = segmentos.find(s => segIds.includes(s.id));
-                    const hs = parseFloat(horasSem);
-                    const vh = parseFloat(valorHora);
-                    const aj = parseFloat(ajudaCusto);
-                    if (!seg || !Number.isFinite(hs)) return <div className="col-span-3 text-muted-foreground">Preencha Ano e Horas/Sem para ver o preview</div>;
-                    const mensais = calcularHorasMensais(hs);
-                    const baseMensalSeg = calcularHorasMensais(seg.horasSemanais);
-                    const percHA = baseMensalSeg ? seg.horasAtividade / baseMensalSeg : 0;
-                    const ha = mensais * percHA;
-                    const repouso = (mensais + ha) * seg.percRepouso;
-                    const totalHoras = mensais + repouso + ha;
-                    const salario = totalHoras * (Number.isFinite(vh) ? vh : seg.valorHora) + (Number.isFinite(aj) ? aj : seg.ajudaCusto);
-                    return (
-                      <>
-                        <div><span className="text-muted-foreground">Mensal:</span> {mensais.toFixed(1)}h</div>
-                        <div><span className="text-muted-foreground">Repouso:</span> {repouso.toFixed(1)}h</div>
-                        <div><span className="text-muted-foreground">H.A.:</span> {ha.toFixed(1)}h</div>
-                        <div><span className="text-muted-foreground">Total Hrs:</span> {totalHoras.toFixed(1)}h</div>
-                        <div><span className="text-muted-foreground">Ajuda Custo:</span> {formatCurrency(Number.isFinite(aj) ? aj : seg.ajudaCusto)}</div>
-                        <div><span className="text-muted-foreground">Valor/Hora:</span> {formatCurrency(Number.isFinite(vh) ? vh : seg.valorHora)}</div>
-                        <div className="col-span-3"><span className="text-muted-foreground">T. a Pagar:</span> <span className="font-medium">{formatCurrency(Number(salario.toFixed(2)))}</span></div>
-                      </>
-                    );
-                  })()}
-                </div>
-                <div>
-                  <Label>Valor Hora Aula (opcional)</Label>
+                  <Label>Valor Hora Aula Global (opcional)</Label>
                   <Input
                     type="number"
                     min="0"
                     step="0.01"
                     value={valorHora}
                     onChange={(e) => setValorHora(e.target.value)}
-                    placeholder="Ex.: 19.59"
+                    placeholder="Deixe em branco para usar o padrão da turma"
                   />
                 </div>
                 <div>
-                  <Label>Ajuda de Custo (opcional)</Label>
+                  <Label>Ajuda de Custo Global (opcional)</Label>
                   <Input
                     type="number"
                     min="0"
                     step="0.01"
                     value={ajudaCusto}
                     onChange={(e) => setAjudaCusto(e.target.value)}
-                    placeholder="Ex.: 10.00"
+                    placeholder="Padrão da turma"
                   />
                 </div>
                 <Button onClick={addProfessor} className="w-full">Cadastrar</Button>
@@ -267,17 +360,13 @@ export default function ProfessoresPage() {
       </Card>
 
       <Card>
-        <CardContent className="p-0">
+        <CardContent className="p-0 overflow-x-auto">
           <Table>
             <TableHeader>
               <TableRow>
                 <TableHead>Nome</TableHead>
                 <TableHead>CPF</TableHead>
-                <TableHead>Admissão</TableHead>
-                <TableHead>Ano</TableHead>
-                <TableHead>Hrs/Sem</TableHead>
-                <TableHead>Valor Hora</TableHead>
-                <TableHead>Ajuda Custo</TableHead>
+                <TableHead>Turmas (Hrs)</TableHead>
                 <TableHead>Mensal</TableHead>
                 <TableHead>Repouso</TableHead>
                 <TableHead>H.A.</TableHead>
@@ -288,166 +377,89 @@ export default function ProfessoresPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filtered.map((prof) => (
-                <TableRow key={prof.id} className="animate-fade-in">
-                  <TableCell className="font-medium">{prof.nome}</TableCell>
-                  <TableCell className="text-muted-foreground">{prof.cpf}</TableCell>
-                  <TableCell className="text-muted-foreground">
-                    {new Date(prof.dataAdmissao).toLocaleDateString('pt-BR')}
-                  </TableCell>
-                  <TableCell>
-                    {(() => {
-                      const first = prof.segmentoIds[0];
-                      const rest = prof.segmentoIds.length - 1;
-                      return (
-                        <div className="flex items-center gap-1">
-                          <Badge variant="secondary" className="text-xs">
-                            {segmentos.find((s) => s.id === first)?.nome}
-                          </Badge>
-                          {rest > 0 && <span className="text-xs text-muted-foreground">+{rest}</span>}
-                        </div>
-                      );
-                    })()}
-                  </TableCell>
-                  <TableCell className="text-muted-foreground">
-                    {typeof prof.horasSemanais === 'number' ? `${prof.horasSemanais}h` : '-'}
-                  </TableCell>
-                  <TableCell className="text-muted-foreground">
-                    {typeof prof.valorHora === 'number' ? formatCurrency(prof.valorHora) : '-'}
-                  </TableCell>
-                  <TableCell className="text-muted-foreground">
-                    {typeof prof.ajudaCusto === 'number' ? formatCurrency(prof.ajudaCusto) : '-'}
-                  </TableCell>
-                  <TableCell className="text-muted-foreground">
-                    {typeof prof.horasSemanais === 'number'
-                      ? (() => {
-                        // Soma das horas mensais considerando todos os segmentos
-                        const mensais = prof.segmentoIds.reduce((acc, sid) => {
+              {filtered.map((prof) => {
+                let sMensais = 0, sRepouso = 0, sHA = 0, sTotalHoras = 0, sPagar = 0;
+
+                prof.segmentoIds.forEach(sid => {
+                  const seg = segmentos.find(s => s.id === sid);
+                  if (!seg) return;
+                  const hs = prof.segmentoHoras?.[sid] || prof.horasSemanais || 0;
+                  const mensais = calcularHorasMensais(hs);
+                  const baseMensalSeg = calcularHorasMensais(Number(seg.horasSemanais) || 0);
+                  const percHA = baseMensalSeg ? (Number(seg.horasAtividade) || 0) / baseMensalSeg : 0;
+                  const ha = mensais * percHA;
+                  const repouso = (mensais + ha) * (Number(seg.percRepouso) || 1 / 6);
+                  const tt = mensais + ha + repouso;
+                  sMensais += mensais;
+                  sRepouso += repouso;
+                  sHA += ha;
+                  sTotalHoras += tt;
+                  const valorH = typeof prof.valorHora === 'number' ? prof.valorHora : seg.valorHora;
+                  const ajuda = typeof prof.ajudaCusto === 'number' ? prof.ajudaCusto : seg.ajudaCusto;
+                  sPagar += (tt * valorH) + ajuda;
+                });
+
+                return (
+                  <TableRow key={prof.id} className="animate-fade-in whitespace-nowrap">
+                    <TableCell className="font-medium">{prof.nome}</TableCell>
+                    <TableCell className="text-muted-foreground">{prof.cpf}</TableCell>
+                    <TableCell>
+                      <div className="flex flex-col gap-1">
+                        {prof.segmentoIds.map(sid => {
                           const seg = segmentos.find(s => s.id === sid);
-                          if (!seg) return acc;
-                          return acc + calcularHorasMensais(prof.horasSemanais!);
-                        }, 0);
-                        return `${mensais.toFixed(1)}h`;
-                      })()
-                      : '-'}
-                  </TableCell>
-                  <TableCell className="text-muted-foreground">
-                    {typeof prof.horasSemanais === 'number'
-                      ? (() => {
-                        let repousoSum = 0;
-                        prof.segmentoIds.forEach((sid) => {
-                          const seg = segmentos.find(s => s.id === sid);
-                          if (!seg) return;
-                          const mensais = calcularHorasMensais(prof.horasSemanais!);
-                          const baseMensalSeg = calcularHorasMensais(seg.horasSemanais);
-                          const percHA = baseMensalSeg ? seg.horasAtividade / baseMensalSeg : 0;
-                          const ha = mensais * percHA;
-                          const repouso = (mensais + ha) * seg.percRepouso;
-                          repousoSum += repouso;
-                        });
-                        return `${repousoSum.toFixed(1)}h`;
-                      })()
-                      : '-'}
-                  </TableCell>
-                  <TableCell className="text-muted-foreground">
-                    {typeof prof.horasSemanais === 'number'
-                      ? (() => {
-                        let haSum = 0;
-                        prof.segmentoIds.forEach((sid) => {
-                          const seg = segmentos.find(s => s.id === sid);
-                          if (!seg) return;
-                          const mensais = calcularHorasMensais(prof.horasSemanais!);
-                          const baseMensalSeg = calcularHorasMensais(seg.horasSemanais);
-                          const percHA = baseMensalSeg ? seg.horasAtividade / baseMensalSeg : 0;
-                          const ha = mensais * percHA;
-                          haSum += ha;
-                        });
-                        return `${haSum.toFixed(1)}h`;
-                      })()
-                      : '-'}
-                  </TableCell>
-                  <TableCell className="text-muted-foreground">
-                    {typeof prof.horasSemanais === 'number'
-                      ? (() => {
-                        let totalH = 0;
-                        prof.segmentoIds.forEach((sid) => {
-                          const seg = segmentos.find(s => s.id === sid);
-                          if (!seg) return;
-                          const mensais = calcularHorasMensais(prof.horasSemanais!);
-                          const baseMensalSeg = calcularHorasMensais(seg.horasSemanais);
-                          const percHA = baseMensalSeg ? seg.horasAtividade / baseMensalSeg : 0;
-                          const ha = mensais * percHA;
-                          const repouso = (mensais + ha) * seg.percRepouso;
-                          totalH += mensais + ha + repouso;
-                        });
-                        return `${totalH.toFixed(1)}h`;
-                      })()
-                      : '-'}
-                  </TableCell>
-                  <TableCell className="text-muted-foreground font-medium">
-                    {typeof prof.horasSemanais === 'number'
-                      ? (() => {
-                        // Calcula Total a Pagar somando por segmento com overrides
-                        let total = 0;
-                        prof.segmentoIds.forEach((sid) => {
-                          const seg = segmentos.find(s => s.id === sid);
-                          if (!seg) return;
-                          const mensais = calcularHorasMensais(prof.horasSemanais!);
-                          const baseMensalSeg = calcularHorasMensais(seg.horasSemanais);
-                          const percHA = baseMensalSeg ? seg.horasAtividade / baseMensalSeg : 0;
-                          const ha = mensais * percHA;
-                          const repouso = (mensais + ha) * seg.percRepouso;
-                          const totalHoras = mensais + ha + repouso;
-                          const valorH = typeof prof.valorHora === 'number' ? prof.valorHora : seg.valorHora;
-                          const ajuda = typeof prof.ajudaCusto === 'number' ? prof.ajudaCusto : seg.ajudaCusto;
-                          total += totalHoras * valorH + ajuda;
-                        });
-                        return formatCurrency(Number(total.toFixed(2)));
-                      })()
-                      : '-'}
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant={prof.ativo ? 'default' : 'destructive'}>
-                      {prof.ativo ? 'Ativo' : 'Inativo'}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="sm" aria-label="Ações">
-                          <MoreHorizontal className="w-4 h-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={() => openEdit(prof)}>
-                          <Pencil className="w-4 h-4 mr-2" /> Editar
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => removeProfessor(prof.id)}>
-                          <Trash2 className="w-4 h-4 mr-2" /> Excluir
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => toggleAtivo(prof.id)}>
-                          {prof.ativo ? (
-                            <>
-                              <UserX className="w-4 h-4 mr-2" /> Inativar
-                            </>
-                          ) : (
-                            <>
-                              <UserCheck className="w-4 h-4 mr-2" /> Ativar
-                            </>
-                          )}
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </TableCell>
-                </TableRow>
-              ))}
+                          const hs = prof.segmentoHoras?.[sid] || prof.horasSemanais || 0;
+                          return (
+                            <Badge key={sid} variant="secondary" className="text-[10px] fit-content">
+                              {seg?.nome || '?'} ({hs}h)
+                            </Badge>
+                          );
+                        })}
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-muted-foreground">{sMensais.toFixed(1)}h</TableCell>
+                    <TableCell className="text-muted-foreground">{sRepouso.toFixed(1)}h</TableCell>
+                    <TableCell className="text-muted-foreground">{sHA.toFixed(1)}h</TableCell>
+                    <TableCell className="text-muted-foreground">{sTotalHoras.toFixed(1)}h</TableCell>
+                    <TableCell className="font-medium">{formatCurrency(sPagar)}</TableCell>
+                    <TableCell>
+                      <Badge variant={prof.ativo ? 'default' : 'destructive'}>
+                        {prof.ativo ? 'Ativo' : 'Inativo'}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="sm" aria-label="Ações">
+                            <MoreHorizontal className="w-4 h-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={() => openEdit(prof)}>
+                            <Pencil className="w-4 h-4 mr-2" /> Editar
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => removeProfessor(prof.id)}>
+                            <Trash2 className="w-4 h-4 mr-2" /> Excluir
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => toggleAtivo(prof.id)}>
+                            {prof.ativo ? (
+                              <><UserX className="w-4 h-4 mr-2" /> Inativar</>
+                            ) : (
+                              <><UserCheck className="w-4 h-4 mr-2" /> Ativar</>
+                            )}
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
             </TableBody>
           </Table>
         </CardContent>
       </Card>
 
       <Dialog open={editOpen} onOpenChange={setEditOpen}>
-        <DialogContent>
+        <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>Editar Professor</DialogTitle>
           </DialogHeader>
@@ -460,64 +472,12 @@ export default function ProfessoresPage() {
               <Label>CPF</Label>
               <Input value={editCpf} onChange={(e) => setEditCpf(e.target.value)} />
             </div>
+
+            {renderSlots(editSlots, setEditSlots)}
+            {renderPreview(editSlots, editValorHora, editAjudaCusto, editing!)}
+
             <div>
-              <Label>Segmentos (selecione um ou mais)</Label>
-              <div className="grid grid-cols-2 gap-2 mt-2">
-                {segmentos.map((s) => (
-                  <label key={s.id} className="flex items-center gap-2 cursor-pointer rounded-md border px-3 py-2 hover:bg-muted/50 transition-colors">
-                    <input
-                      type="checkbox"
-                      checked={editSegIds.includes(s.id)}
-                      onChange={() => toggleEditSegId(s.id)}
-                      className="rounded"
-                    />
-                    <span className="text-sm">{s.nome}</span>
-                  </label>
-                ))}
-              </div>
-            </div>
-            <div>
-              <Label>Horas por Semana</Label>
-              <Input
-                type="number"
-                min="1"
-                step="0.5"
-                value={editHorasSem}
-                onChange={(e) => setEditHorasSem(e.target.value)}
-              />
-            </div>
-            <div className="text-sm text-muted-foreground">
-              Hrs Mensais (auto): {Number.isFinite(parseFloat(editHorasSem)) ? (parseFloat(editHorasSem) * 4.5).toFixed(1) : '-'}
-            </div>
-            <div className="grid grid-cols-3 gap-3 text-sm rounded-md border p-3 bg-muted/30">
-              {(() => {
-                const seg = segmentos.find(s => editSegIds.includes(s.id));
-                const hs = parseFloat(editHorasSem);
-                const vh = parseFloat(editValorHora);
-                const aj = parseFloat(editAjudaCusto);
-                if (!seg || !Number.isFinite(hs)) return <div className="col-span-3 text-muted-foreground">Informe Ano e Horas/Sem para ver o preview</div>;
-                const mensais = calcularHorasMensais(hs);
-                const baseMensalSeg = calcularHorasMensais(seg.horasSemanais);
-                const percHA = baseMensalSeg ? seg.horasAtividade / baseMensalSeg : 0;
-                const ha = mensais * percHA;
-                const repouso = (mensais + ha) * seg.percRepouso;
-                const totalHoras = mensais + repouso + ha;
-                const salario = totalHoras * (Number.isFinite(vh) ? vh : (editing?.valorHora ?? seg.valorHora)) + (Number.isFinite(aj) ? aj : (editing?.ajudaCusto ?? seg.ajudaCusto));
-                return (
-                  <>
-                    <div><span className="text-muted-foreground">Mensal:</span> {mensais.toFixed(1)}h</div>
-                    <div><span className="text-muted-foreground">Repouso:</span> {repouso.toFixed(1)}h</div>
-                    <div><span className="text-muted-foreground">H.A.:</span> {ha.toFixed(1)}h</div>
-                    <div><span className="text-muted-foreground">Total Hrs:</span> {totalHoras.toFixed(1)}h</div>
-                    <div><span className="text-muted-foreground">Ajuda Custo:</span> {formatCurrency(Number.isFinite(aj) ? aj : (editing?.ajudaCusto ?? seg.ajudaCusto))}</div>
-                    <div><span className="text-muted-foreground">Valor/Hora:</span> {formatCurrency(Number.isFinite(vh) ? vh : (editing?.valorHora ?? seg.valorHora))}</div>
-                    <div className="col-span-3"><span className="text-muted-foreground">T. a Pagar:</span> <span className="font-medium">{formatCurrency(Number(salario.toFixed(2)))}</span></div>
-                  </>
-                );
-              })()}
-            </div>
-            <div>
-              <Label>Valor Hora Aula</Label>
+              <Label>Valor Hora Aula Global</Label>
               <Input
                 type="number"
                 min="0"
@@ -527,7 +487,7 @@ export default function ProfessoresPage() {
               />
             </div>
             <div>
-              <Label>Ajuda de Custo</Label>
+              <Label>Ajuda de Custo Global</Label>
               <Input
                 type="number"
                 min="0"
