@@ -68,6 +68,19 @@ function calcularPercentualHA(segmento: Segmento): number {
   return (Number(segmento.horasAtividade) || 0) / baseMensal;
 }
 
+function isEstagiaria(nome: string): boolean {
+  const n = String(nome || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+  return n.includes('estagiaria');
+}
+
+function round1(n: number): number {
+  return Math.round(n * 10) / 10;
+}
+
+function round2(n: number): number {
+  return Math.round(n * 100) / 100;
+}
+
 export function gerarLancamento(
   professor: Professor,
   segmento: Segmento,
@@ -75,27 +88,44 @@ export function gerarLancamento(
 ): Omit<Lancamento, 'id'> {
   // Forçar Number() pois PostgreSQL NUMERIC retorna strings
   const horasBaseSemanais = Number(professor.segmentoHoras?.[segmento.id]) || Number(professor.horasSemanais) || Number(segmento.horasSemanais) || 0;
-  const horasMensais = calcularHorasMensais(horasBaseSemanais);
+  const horasMensais = round1(calcularHorasMensais(horasBaseSemanais));
+
+  if (isEstagiaria(segmento.nome)) {
+    const totalPagar = round2((1000 / 30) * horasBaseSemanais);
+    return {
+      professorId: professor.id,
+      segmentoId: segmento.id,
+      competencia,
+      horasMensais,
+      repouso: 0,
+      horasAtividade: 0,
+      totalHoras: horasMensais,
+      ajudaCusto: 0,
+      totalPagar,
+      status: 'aberto',
+    };
+  }
+
   const percHA = calcularPercentualHA(segmento);
-  const horasAtividade = Number((horasMensais * percHA).toFixed(2));
+  const horasAtividade = round1(horasMensais * percHA);
   // Novo cálculo: Repouso = (Mensal + H.A.) * percRepouso
   const percRepouso = Number(segmento.percRepouso) || 1 / 6;
-  const repouso = calcularRepouso(horasMensais + horasAtividade, percRepouso);
-  const totalHoras = calcularTotalHoras(horasMensais, repouso, horasAtividade);
-  const valorHora = Number(professor.valorHora ?? segmento.valorHora) || 0;
-  const ajudaCusto = Number(professor.ajudaCusto ?? segmento.ajudaCusto) || 0;
-  const totalPagar = calcularTotalPagar(totalHoras, valorHora, ajudaCusto);
+  const repouso = round1(calcularRepouso(horasMensais + horasAtividade, percRepouso));
+  const totalHoras = round1(calcularTotalHoras(horasMensais, repouso, horasAtividade));
+  const valorHora = Number(segmento.valorHora) || 0;
+  const ajudaCusto = Number(segmento.ajudaCusto) || 0;
+  const totalPagar = round2(calcularTotalPagar(totalHoras, valorHora, ajudaCusto));
 
   return {
     professorId: professor.id,
     segmentoId: segmento.id,
     competencia,
-    horasMensais: Number(horasMensais.toFixed(2)),
-    repouso: Number(repouso.toFixed(2)),
+    horasMensais,
+    repouso,
     horasAtividade,
-    totalHoras: Number(totalHoras.toFixed(2)),
+    totalHoras,
     ajudaCusto,
-    totalPagar: Number(totalPagar.toFixed(2)),
+    totalPagar,
     status: 'aberto',
   };
 }

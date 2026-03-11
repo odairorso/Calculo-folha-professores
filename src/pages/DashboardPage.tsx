@@ -5,7 +5,7 @@ import { Users, DollarSign, Clock, TrendingUp } from 'lucide-react';
 import { formatCurrency, formatCompetencia } from '@/lib/mockData';
 import { useProfessores, initProfessoresFromApi } from '@/lib/store';
 import { useSegmentos, initSegmentosFromApi } from '@/lib/segmentosStore';
-import { calcularHorasMensais } from '@/lib/types';
+import { gerarLancamento } from '@/lib/types';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 
@@ -28,17 +28,8 @@ export default function DashboardPage() {
     return prof.segmentoIds.map((segId) => {
       const seg = segmentos.find((s) => s.id === segId);
       if (!seg) return null;
-      const hs = Number(prof.horasSemanais ?? seg.horasSemanais) || 0;
-      const mensais = calcularHorasMensais(hs);
-      const baseMensalSeg = calcularHorasMensais(Number(seg.horasSemanais) || 0);
-      const percHA = baseMensalSeg ? (Number(seg.horasAtividade) || 0) / baseMensalSeg : 0;
-      const ha = mensais * percHA;
-      const repouso = (mensais + ha) * (Number(seg.percRepouso) || 1 / 6);
-      const totalHoras = mensais + ha + repouso;
-      const valorH = Number(prof.valorHora ?? seg.valorHora) || 0;
-      const ajuda = Number(prof.ajudaCusto ?? seg.ajudaCusto) || 0;
-      const totalPagar = totalHoras * valorH + ajuda;
-      return { professorId: prof.id, segmentoId: segId, totalPagar, totalHoras, competencia: comp };
+      const l = gerarLancamento(prof, seg, comp);
+      return { professorId: prof.id, segmentoId: segId, totalPagar: l.totalPagar, totalHoras: l.totalHoras, competencia: comp };
     }).filter(Boolean);
   });
 

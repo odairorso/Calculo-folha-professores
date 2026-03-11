@@ -9,7 +9,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Badge } from '@/components/ui/badge';
 import { Plus, Search, MoreHorizontal, Pencil, Trash2, UserX, UserCheck } from 'lucide-react';
-import { Professor, calcularHorasMensais } from '@/lib/types';
+import { Professor, calcularHorasMensais, gerarLancamento } from '@/lib/types';
 import { useProfessores, addProfessor as storeAdd, updateProfessor, deleteProfessor, toggleProfessorAtivo, initProfessoresFromApi } from '@/lib/store';
 import { useSegmentos, initSegmentosFromApi } from '@/lib/segmentosStore';
 
@@ -356,27 +356,12 @@ export function ProfessoresPage() {
                 prof.segmentoIds.forEach(sid => {
                   const seg = segmentos.find(s => s.id === sid);
                   if (!seg) return;
-                  const hs = Number(prof.segmentoHoras?.[sid] || prof.horasSemanais || 0);
-                  const mensais = round1(calcularHorasMensais(hs));
-                  let ha = 0;
-                  let repouso = 0;
-                  let tt = mensais;
-                  sMensais += mensais;
-                  if (isEstagiaria(seg.nome)) {
-                    sPagar += bolsaEstagiaria(hs);
-                  } else {
-                    const baseMensalSeg = calcularHorasMensais(Number(seg.horasSemanais) || 0);
-                    const percHA = baseMensalSeg ? (Number(seg.horasAtividade) || 0) / baseMensalSeg : 0;
-                    ha = round1(mensais * percHA);
-                    repouso = round1((mensais + ha) * (Number(seg.percRepouso) || 1 / 6));
-                    tt = mensais + ha + repouso;
-                    const valorH = seg.valorHora;
-                    const ajuda = seg.ajudaCusto;
-                    sPagar += (tt * valorH) + ajuda;
-                  }
-                  sRepouso += repouso;
-                  sHA += ha;
-                  sTotalHoras += tt;
+                  const l = gerarLancamento(prof, seg, new Date().toISOString().slice(0, 7));
+                  sMensais += l.horasMensais;
+                  sRepouso += l.repouso;
+                  sHA += l.horasAtividade;
+                  sTotalHoras += l.totalHoras;
+                  sPagar += l.totalPagar;
                 });
 
                 return (
