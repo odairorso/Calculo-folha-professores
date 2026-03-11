@@ -254,13 +254,14 @@ export function ProfessoresPage() {
     );
   };
 
-  const renderPreview = (currentSlots: SegSlot[], vHora: string, aCusto: string, isEditingParams?: Professor) => {
+  const renderPreview = (currentSlots: SegSlot[], _vHora: string, _aCusto: string, isEditingParams?: Professor) => {
     const valid = currentSlots.filter(s => s.segId && parseFloat(s.horas) > 0);
     if (valid.length === 0) return <div className="text-muted-foreground">Selecione ao menos 1 turma com horas para ver o preview</div>;
 
     let tMensais = 0, tRepouso = 0, tHA = 0, tHoras = 0, salario = 0;
-    const vh = toNumberBR(vHora);
-    const aj = toNumberBR(aCusto);
+    // Força cálculo por turma (ignora valor/ajuda globais)
+    const vh = NaN;
+    const aj = NaN;
     const perTurma: string[] = [];
 
     valid.forEach(s => {
