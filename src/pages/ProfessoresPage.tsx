@@ -18,6 +18,11 @@ function formatCurrency(value: number) {
   return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
 }
 
+function toNumberBR(v: string): number {
+  if (v == null || v === '') return NaN;
+  return parseFloat(String(v).replace(',', '.'));
+}
+
 interface SegSlot {
   segId: string;
   horas: string;
@@ -254,13 +259,14 @@ export function ProfessoresPage() {
     if (valid.length === 0) return <div className="text-muted-foreground">Selecione ao menos 1 turma com horas para ver o preview</div>;
 
     let tMensais = 0, tRepouso = 0, tHA = 0, tHoras = 0, salario = 0;
-    const vh = parseFloat(vHora);
-    const aj = parseFloat(aCusto);
+    const vh = toNumberBR(vHora);
+    const aj = toNumberBR(aCusto);
+    const perTurma: string[] = [];
 
     valid.forEach(s => {
       const seg = segmentos.find(x => x.id === s.segId);
       if (!seg) return;
-      const hs = parseFloat(s.horas);
+      const hs = toNumberBR(s.horas);
       const mensais = calcularHorasMensais(hs);
       const baseMensalSeg = calcularHorasMensais(Number(seg.horasSemanais) || 0);
       const percHA = baseMensalSeg ? (Number(seg.horasAtividade) || 0) / baseMensalSeg : 0;
@@ -276,6 +282,7 @@ export function ProfessoresPage() {
       const valorFinal = Number.isFinite(vh) ? vh : (isEditingParams?.valorHora ?? seg.valorHora);
       const ajudaFinal = Number.isFinite(aj) ? aj : (isEditingParams?.ajudaCusto ?? seg.ajudaCusto);
       salario += (tt * valorFinal) + ajudaFinal;
+      perTurma.push(`${seg.nome}: ${formatCurrency(valorFinal)}`);
     });
 
     return (
@@ -285,7 +292,10 @@ export function ProfessoresPage() {
         <div><span className="text-muted-foreground">H.A.:</span> {tHA.toFixed(1)}h</div>
         <div><span className="text-muted-foreground">Total Hrs:</span> {tHoras.toFixed(1)}h</div>
         <div><span className="text-muted-foreground">A. Custo:</span> {formatCurrency(Number.isFinite(aj) ? aj : 0)}</div>
-        <div><span className="text-muted-foreground">Vr/Hora:</span> {Number.isFinite(vh) ? formatCurrency(vh) : 'por turma'}</div>
+        <div>
+          <span className="text-muted-foreground">Vr/Hora:</span>{' '}
+          {Number.isFinite(vh) ? formatCurrency(vh) : perTurma.join(' · ')}
+        </div>
         <div className="col-span-3 pt-2 mt-1 border-t border-border/50 text-base">
           <span className="text-muted-foreground">T. a Pagar:</span> <span className="font-semibold text-primary ml-2">{formatCurrency(salario)}</span>
         </div>
