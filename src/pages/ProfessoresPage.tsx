@@ -173,8 +173,8 @@ export function ProfessoresPage() {
     return (
       <div className="space-y-3 mt-2 border-y py-4 my-4">
         <Label className="text-muted-foreground font-semibold">Turmas do Professor</Label>
-        <div className="rounded-md border overflow-hidden">
-          <Table>
+        <div className="rounded-md border overflow-x-auto">
+          <Table className="text-xs sm:text-sm">
             <TableHeader>
               <TableRow>
                 <TableHead>Ano</TableHead>
@@ -186,7 +186,7 @@ export function ProfessoresPage() {
             <TableBody>
               {segmentos.map((seg) => (
                 <TableRow key={seg.id}>
-                  <TableCell className="font-medium">{seg.nome}</TableCell>
+                  <TableCell className="font-medium whitespace-nowrap">{seg.nome}</TableCell>
                   <TableCell>
                     <Input
                       type="number"
@@ -195,7 +195,7 @@ export function ProfessoresPage() {
                       placeholder="0"
                       value={getHorasBySegId(seg.id)}
                       onChange={(e) => setHorasBySegId(seg.id, e.target.value)}
-                      className="h-8"
+                      className="h-8 min-w-[90px]"
                     />
                   </TableCell>
                   <TableCell>{formatCurrency(seg.valorHora)}</TableCell>
@@ -213,17 +213,14 @@ export function ProfessoresPage() {
     const valid = currentSlots.filter(s => s.segId && parseFloat(s.horas) > 0);
     if (valid.length === 0) return <div className="text-muted-foreground">Selecione ao menos 1 turma com horas para ver o preview</div>;
 
-    let tMensais = 0, tRepouso = 0, tHA = 0, tHoras = 0, salario = 0;
-    // Força cálculo por turma (ignora valor/ajuda globais)
-    const vh = NaN;
-    const aj = NaN;
+    let tMensais = 0, tRepouso = 0, tHA = 0, tHoras = 0, salario = 0, tAjuda = 0;
     const perTurma: string[] = [];
 
     valid.forEach(s => {
       const seg = segmentos.find(x => x.id === s.segId);
       if (!seg) return;
       const hs = toNumberBR(s.horas);
-      let mensais = round1(calcularHorasMensais(hs));
+      const mensais = round1(calcularHorasMensais(hs));
       const baseMensalSeg = calcularHorasMensais(Number(seg.horasSemanais) || 0);
       const percHA = baseMensalSeg ? (Number(seg.horasAtividade) || 0) / baseMensalSeg : 0;
       const ha = round1(mensais * percHA);
@@ -239,17 +236,18 @@ export function ProfessoresPage() {
       const valorFinal = seg.valorHora;
       const ajudaFinal = seg.ajudaCusto;
       salario += (tt * valorFinal) + ajudaFinal;
+      tAjuda += ajudaFinal;
       perTurma.push(`${seg.nome}: ${formatCurrency(valorFinal)}`);
     });
 
     return (
-      <div className="grid grid-cols-3 gap-3 text-sm rounded-md border p-3 bg-muted/30 mt-2">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-3 text-sm rounded-md border p-3 bg-muted/30 mt-2">
         <div><span className="text-muted-foreground">Mensal:</span> {tMensais.toFixed(1)}h</div>
         <div><span className="text-muted-foreground">Repouso:</span> {tRepouso.toFixed(1)}h</div>
         <div><span className="text-muted-foreground">H.A.:</span> {tHA.toFixed(1)}h</div>
         <div><span className="text-muted-foreground">Total Hrs:</span> {tHoras.toFixed(1)}h</div>
-        <div><span className="text-muted-foreground">A. Custo:</span> {formatCurrency(Number.isFinite(aj) ? aj : 0)}</div>
-        <div className="col-span-3">
+        <div><span className="text-muted-foreground">A. Custo:</span> {formatCurrency(tAjuda)}</div>
+        <div className="sm:col-span-2 lg:col-span-3">
           <span className="text-muted-foreground">Vr/Hora por turma:</span>
           <div className="mt-1 grid grid-cols-1 gap-1">
             {perTurma.map((t, i) => (
@@ -257,7 +255,7 @@ export function ProfessoresPage() {
             ))}
           </div>
         </div>
-        <div className="col-span-3 pt-2 mt-1 border-t border-border/50 text-base">
+        <div className="sm:col-span-2 lg:col-span-3 pt-2 mt-1 border-t border-border/50 text-base">
           <span className="text-muted-foreground">T. a Pagar:</span> <span className="font-semibold text-primary ml-2">{formatCurrency(salario)}</span>
         </div>
       </div>
@@ -274,7 +272,7 @@ export function ProfessoresPage() {
             <DialogTrigger asChild>
               <Button><Plus className="w-4 h-4 mr-2" />Novo Professor</Button>
             </DialogTrigger>
-            <DialogContent className="max-w-md">
+            <DialogContent className="w-[96vw] max-w-[1100px] max-h-[92vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle>Cadastrar Professor</DialogTitle>
               </DialogHeader>
@@ -337,19 +335,19 @@ export function ProfessoresPage() {
                 prof.segmentoIds.forEach(sid => {
                   const seg = segmentos.find(s => s.id === sid);
                   if (!seg) return;
-                  const hs = prof.segmentoHoras?.[sid] || prof.horasSemanais || 0;
-                  const mensais = calcularHorasMensais(hs);
+                  const hs = Number(prof.segmentoHoras?.[sid] || prof.horasSemanais || 0);
+                  const mensais = round1(calcularHorasMensais(hs));
                   const baseMensalSeg = calcularHorasMensais(Number(seg.horasSemanais) || 0);
                   const percHA = baseMensalSeg ? (Number(seg.horasAtividade) || 0) / baseMensalSeg : 0;
-                  const ha = mensais * percHA;
-                  const repouso = (mensais + ha) * (Number(seg.percRepouso) || 1 / 6);
+                  const ha = round1(mensais * percHA);
+                  const repouso = round1((mensais + ha) * (Number(seg.percRepouso) || 1 / 6));
                   const tt = mensais + ha + repouso;
                   sMensais += mensais;
                   sRepouso += repouso;
                   sHA += ha;
                   sTotalHoras += tt;
-                  const valorH = typeof prof.valorHora === 'number' ? prof.valorHora : seg.valorHora;
-                  const ajuda = typeof prof.ajudaCusto === 'number' ? prof.ajudaCusto : seg.ajudaCusto;
+                  const valorH = seg.valorHora;
+                  const ajuda = seg.ajudaCusto;
                   sPagar += (tt * valorH) + ajuda;
                 });
 
@@ -413,7 +411,7 @@ export function ProfessoresPage() {
       </Card>
 
       <Dialog open={editOpen} onOpenChange={setEditOpen}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="w-[96vw] max-w-[1100px] max-h-[92vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Editar Professor</DialogTitle>
           </DialogHeader>
