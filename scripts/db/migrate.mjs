@@ -39,6 +39,7 @@ CREATE TABLE IF NOT EXISTS professores (
 CREATE TABLE IF NOT EXISTS professor_segmentos (
   professor_id UUID NOT NULL REFERENCES professores(id) ON DELETE CASCADE,
   segmento_id UUID NOT NULL REFERENCES segmentos(id) ON DELETE CASCADE,
+  horas_semanais NUMERIC(10,2) NOT NULL DEFAULT 0,
   PRIMARY KEY (professor_id, segmento_id)
 );
 

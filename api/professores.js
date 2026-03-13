@@ -3,6 +3,10 @@ import { getSql } from './_db.js';
 export default async function handler(req, res) {
   try {
     const sql = getSql();
+    await sql`
+      alter table professor_segmentos
+      add column if not exists horas_semanais numeric(10,2) not null default 0
+    `;
     if (req.method === 'GET') {
       const profs = await sql`
         select id, nome, cpf, data_admissao as "dataAdmissao",

@@ -12,6 +12,7 @@ import { Plus, Search, MoreHorizontal, Pencil, Trash2, UserX, UserCheck } from '
 import { Professor, calcularHorasMensais, gerarLancamento } from '@/lib/types';
 import { useProfessores, addProfessor as storeAdd, updateProfessor, deleteProfessor, toggleProfessorAtivo, initProfessoresFromApi } from '@/lib/store';
 import { useSegmentos, initSegmentosFromApi } from '@/lib/segmentosStore';
+import { toast } from 'sonner';
 
 function formatCurrency(value: number) {
   return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
@@ -80,18 +81,29 @@ export function ProfessoresPage() {
 
   // Sem prefill global na edição; cálculo sempre por turma
 
-  const addProfessor = () => {
-    const validSlots = slots.filter(s => s.segId && parseFloat(s.horas) > 0);
-    if (!nome || !cpf || validSlots.length === 0) return;
+  const addProfessor = async () => {
+    const validSlots = slots.filter(s => s.segId && toNumberBR(s.horas) > 0);
+    if (!nome.trim()) {
+      toast.error('Informe o nome do professor');
+      return;
+    }
+    if (!cpf.trim()) {
+      toast.error('Informe o CPF do professor');
+      return;
+    }
+    if (validSlots.length === 0) {
+      toast.error('Informe horas em pelo menos um curso');
+      return;
+    }
 
     const segmentoHoras: Record<string, number> = {};
     const segmentoIds: string[] = [];
     validSlots.forEach(s => {
       if (!segmentoIds.includes(s.segId)) {
         segmentoIds.push(s.segId);
-        segmentoHoras[s.segId] = parseFloat(s.horas);
+        segmentoHoras[s.segId] = toNumberBR(s.horas);
       } else {
-        segmentoHoras[s.segId] += parseFloat(s.horas);
+        segmentoHoras[s.segId] += toNumberBR(s.horas);
       }
     });
 
@@ -105,11 +117,13 @@ export function ProfessoresPage() {
       ativo: true,
       // Sem valor/ajuda globais
     };
-    storeAdd(newProf);
+    await storeAdd(newProf);
+    await initProfessoresFromApi();
     setNome('');
     setCpf('');
     setSlots([{ segId: '', horas: '' }]);
     setDialogOpen(false);
+    toast.success('Professor cadastrado com sucesso');
   };
 
   const toggleAtivo = (id: string) => {
