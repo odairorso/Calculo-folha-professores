@@ -114,7 +114,6 @@ export function ProfessoresPage() {
       // Sem valor/ajuda globais
     };
     await storeAdd(newProf);
-    await initProfessoresFromApi();
     setNome('');
     setCpf('');
     setSlots([{ segId: '', horas: '' }]);

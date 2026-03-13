@@ -1,12 +1,29 @@
 import { getSql } from './_db.js';
 
-export default async function handler(req, res) {
-  try {
-    const sql = getSql();
+let horasSemanaisReady = false;
+
+async function ensureHorasSemanaisColumn(sql) {
+  if (horasSemanaisReady) return;
+  const check = await sql`
+    select 1
+    from information_schema.columns
+    where table_name = 'professor_segmentos'
+      and column_name = 'horas_semanais'
+    limit 1
+  `;
+  if (check.length === 0) {
     await sql`
       alter table professor_segmentos
       add column if not exists horas_semanais numeric(10,2) not null default 0
     `;
+  }
+  horasSemanaisReady = true;
+}
+
+export default async function handler(req, res) {
+  try {
+    const sql = getSql();
+    await ensureHorasSemanaisColumn(sql);
     if (req.method === 'GET') {
       const profs = await sql`
         select id, nome, cpf, data_admissao as "dataAdmissao",
@@ -52,14 +69,13 @@ export default async function handler(req, res) {
         returning id
       `;
       const id = inserted[0].id;
-      for (const s of segsInput) {
-        if (s.segmentoId) {
-          await sql`
-            insert into professor_segmentos (professor_id, segmento_id, horas_semanais)
-            values (${id}, ${s.segmentoId}, ${s.horasSemanais || 0})
-          `;
-        }
-      }
+      const inserts = (segsInput || [])
+        .filter((s) => s.segmentoId)
+        .map((s) => sql`
+          insert into professor_segmentos (professor_id, segmento_id, horas_semanais)
+          values (${id}, ${s.segmentoId}, ${Number(s.horasSemanais) || 0})
+        `);
+      if (inserts.length > 0) await Promise.all(inserts);
       res.status(201).json({ id });
       return;
     }
@@ -80,14 +96,13 @@ export default async function handler(req, res) {
       // Atualizar segmentos: apaga todos e reinsere
       if (segsInput != null) {
         await sql`delete from professor_segmentos where professor_id = ${id}`;
-        for (const s of segsInput) {
-          if (s.segmentoId) {
-            await sql`
-              insert into professor_segmentos (professor_id, segmento_id, horas_semanais)
-              values (${id}, ${s.segmentoId}, ${s.horasSemanais || 0})
-            `;
-          }
-        }
+        const inserts = (segsInput || [])
+          .filter((s) => s.segmentoId)
+          .map((s) => sql`
+            insert into professor_segmentos (professor_id, segmento_id, horas_semanais)
+            values (${id}, ${s.segmentoId}, ${Number(s.horasSemanais) || 0})
+          `);
+        if (inserts.length > 0) await Promise.all(inserts);
       }
       res.status(204).end();
       return;
