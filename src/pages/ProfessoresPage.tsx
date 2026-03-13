@@ -87,10 +87,6 @@ export function ProfessoresPage() {
       toast.error('Informe o nome do professor');
       return;
     }
-    if (!cpf.trim()) {
-      toast.error('Informe o CPF do professor');
-      return;
-    }
     if (validSlots.length === 0) {
       toast.error('Informe horas em pelo menos um curso');
       return;
@@ -110,7 +106,7 @@ export function ProfessoresPage() {
     const newProf: Professor = {
       id: `p${Date.now()}`,
       nome,
-      cpf,
+      cpf: cpf.trim() || 'NÃO INFORMADO',
       dataAdmissao: new Date().toISOString().split('T')[0],
       segmentoIds,
       segmentoHoras,
@@ -317,7 +313,7 @@ export function ProfessoresPage() {
                   <Input value={nome} onChange={(e) => setNome(e.target.value)} placeholder="Nome do professor" />
                 </div>
                 <div>
-                  <Label>CPF</Label>
+                  <Label>CPF (opcional)</Label>
                   <Input value={cpf} onChange={(e) => setCpf(e.target.value)} placeholder="000.000.000-00" />
                 </div>
 

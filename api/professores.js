@@ -41,13 +41,14 @@ export default async function handler(req, res) {
       const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : req.body || {};
       const { nome, cpf, dataAdmissao, valorHora, ajudaCusto, segmentos: segsInput } = body;
       // segsInput = [{ segmentoId, horasSemanais }, ...]
-      if (!nome || !cpf || !segsInput || segsInput.length === 0) {
-        res.status(400).json({ error: 'nome, cpf e ao menos um segmento são obrigatórios' });
+      if (!nome || !segsInput || segsInput.length === 0) {
+        res.status(400).json({ error: 'nome e ao menos um segmento são obrigatórios' });
         return;
       }
+      const cpfFinal = String(cpf || '').trim() || 'NÃO INFORMADO';
       const inserted = await sql`
         insert into professores (nome, cpf, data_admissao, valor_hora, ajuda_custo, ativo)
-        values (${nome}, ${cpf}, ${dataAdmissao || new Date()}, ${valorHora || null}, ${ajudaCusto || 0}, true)
+        values (${nome}, ${cpfFinal}, ${dataAdmissao || new Date()}, ${valorHora || null}, ${ajudaCusto || 0}, true)
         returning id
       `;
       const id = inserted[0].id;
