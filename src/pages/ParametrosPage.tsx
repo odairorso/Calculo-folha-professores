@@ -25,7 +25,19 @@ export default function ParametrosPage() {
   // Sincroniza com o store
   useEffect(() => {
     if (apiSegmentos.length > 0) {
-      setSegs(apiSegmentos);
+      const priority: Record<string, number> = {
+        'Berçário I': 1,
+        'Berçário II': 2,
+        'Ed. Infantil': 3,
+        'Fund. I': 4,
+        'Fund. II': 5,
+        'Estagiária': 6,
+        'Ens. Médio': 7
+      };
+      const sorted = [...apiSegmentos].sort((a, b) => 
+        (priority[a.nome] || 99) - (priority[b.nome] || 99)
+      );
+      setSegs(sorted);
     }
   }, [apiSegmentos]);
 
