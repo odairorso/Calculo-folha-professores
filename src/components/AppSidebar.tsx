@@ -12,6 +12,7 @@ import {
   GraduationCap,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { ThemeToggle } from './ThemeToggle';
 
 const navItems = [
   { label: 'Dashboard', icon: LayoutDashboard, path: '/' },
@@ -83,6 +84,11 @@ export function AppSidebar({ mobileOpen, onCloseMobile }: AppSidebarProps) {
           );
         })}
       </nav>
+
+      {/* Theme Toggle */}
+      <div className="px-2 py-4 border-t border-sidebar-border">
+        <ThemeToggle collapsed={collapsed} className="w-full justify-start" />
+      </div>
 
       {/* Collapse toggle */}
       <button
