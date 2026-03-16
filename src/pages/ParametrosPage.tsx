@@ -154,7 +154,12 @@ export default function ParametrosPage() {
                     <>
                       <TableCell className="text-right">{seg.horasSemanais}h</TableCell>
                       <TableCell className="text-right">1/6</TableCell>
-                      <TableCell className="text-right">{seg.horasAtividade}h</TableCell>
+                      <TableCell className="text-right">
+                        {seg.horasAtividade}h 
+                        <span className="text-xs text-muted-foreground ml-1">
+                          ({((seg.horasAtividade / (seg.horasSemanais * 4.5)) * 100).toFixed(0)}%)
+                        </span>
+                      </TableCell>
                       <TableCell className="text-right">{formatCurrency(seg.valorHora)}</TableCell>
                       <TableCell className="text-right">{formatCurrency(seg.ajudaCusto)}</TableCell>
                       <TableCell className="text-right">
@@ -191,6 +196,10 @@ export default function ParametrosPage() {
             <div className="flex items-center gap-2">
               <span className="font-mono bg-muted px-2 py-1 rounded text-xs">Total a Pagar</span>
               <span>= Total Hrs × Valor/Hora + Ajuda</span>
+            </div>
+            <div className="flex items-center gap-2 col-span-1 md:col-span-2">
+              <span className="font-mono bg-muted px-2 py-1 rounded text-xs">H.A. (Hora Atividade)</span>
+              <span>= Horas Mensais × % (definido por segmento)</span>
             </div>
           </div>
         </CardContent>
