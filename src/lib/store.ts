@@ -1,5 +1,6 @@
 import { Professor } from './types';
 import { useSyncExternalStore } from 'react';
+import { toast } from 'sonner';
 
 type Subscriber = () => void;
 
@@ -34,7 +35,7 @@ export async function initProfessoresFromApi() {
       notify();
     }
   } catch {
-    // API indisponível
+    toast.error('Erro ao carregar professores. Verifique a conexão.');
   }
 }
 
@@ -65,7 +66,9 @@ export async function addProfessor(p: Professor) {
       notify();
       return;
     }
-  } catch { }
+  } catch {
+    toast.error('Erro ao salvar professor. Dados salvos localmente.');
+  }
   // fallback local
   professoresStore = [...professoresStore, p];
   notify();
@@ -92,7 +95,9 @@ export async function updateProfessor(id: string, patch: Partial<Professor>) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
     });
-  } catch { }
+  } catch {
+    toast.error('Erro ao atualizar professor.');
+  }
   professoresStore = professoresStore.map((p) => (p.id === id ? { ...p, ...patch } : p));
   notify();
 }
@@ -104,7 +109,9 @@ export async function deleteProfessor(id: string) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ id }),
     });
-  } catch { }
+  } catch {
+    toast.error('Erro ao excluir professor.');
+  }
   professoresStore = professoresStore.filter((p) => p.id !== id);
   notify();
 }

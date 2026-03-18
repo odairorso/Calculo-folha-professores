@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
 import { PageHeader } from '@/components/PageHeader';
 import { StatCard } from '@/components/StatCard';
 import { Users, DollarSign, Clock, TrendingUp } from 'lucide-react';
@@ -23,29 +23,32 @@ export default function DashboardPage() {
   const ativos = professores.filter((p) => p.ativo).length;
   const comp = new Date().toISOString().slice(0, 7);
 
-  // Calcular lançamentos on-the-fly a partir de professores e segmentos reais
-  const lancamentos = professores.filter(p => p.ativo).flatMap((prof) => {
-    return prof.segmentoIds.map((segId) => {
-      const seg = segmentos.find((s) => s.id === segId);
-      if (!seg) return null;
-      const l = gerarLancamento(prof, seg, comp);
-      return { professorId: prof.id, segmentoId: segId, totalPagar: l.totalPagar, totalHoras: l.totalHoras, competencia: comp };
-    }).filter(Boolean);
-  });
+  // Memoizado: recalcula apenas quando professores ou segmentos mudam
+  const lancamentos = useMemo(() => {
+    const segMap = new Map(segmentos.map(s => [s.id, s]));
+    return professores.filter(p => p.ativo).flatMap((prof) =>
+      prof.segmentoIds.flatMap((segId) => {
+        const seg = segMap.get(segId);
+        if (!seg) return [];
+        const l = gerarLancamento(prof, seg, comp);
+        return [{ professorId: prof.id, segmentoId: segId, totalPagar: l.totalPagar, totalHoras: l.totalHoras }];
+      })
+    );
+  }, [professores, segmentos, comp]);
 
-  const totalFolha = lancamentos.reduce((sum, l) => sum + (l?.totalPagar ?? 0), 0);
-  const totalHoras = lancamentos.reduce((sum, l) => sum + (l?.totalHoras ?? 0), 0);
+  const totalFolha = useMemo(() => lancamentos.reduce((sum, l) => sum + l.totalPagar, 0), [lancamentos]);
+  const totalHoras = useMemo(() => lancamentos.reduce((sum, l) => sum + l.totalHoras, 0), [lancamentos]);
 
   // Per-segment chart data
-  const segData = segmentos.map((seg) => {
-    const segLancs = lancamentos.filter((l) => l?.segmentoId === seg.id);
+  const segData = useMemo(() => segmentos.map((seg) => {
+    const segLancs = lancamentos.filter((l) => l.segmentoId === seg.id);
     return {
       nome: seg.nome,
-      total: segLancs.reduce((s, l) => s + (l?.totalPagar ?? 0), 0),
-      horas: segLancs.reduce((s, l) => s + (l?.totalHoras ?? 0), 0),
+      total: segLancs.reduce((s, l) => s + l.totalPagar, 0),
+      horas: segLancs.reduce((s, l) => s + l.totalHoras, 0),
       professores: segLancs.length,
     };
-  });
+  }), [lancamentos, segmentos]);
 
   const pieData = segData.filter((s) => s.total > 0);
 

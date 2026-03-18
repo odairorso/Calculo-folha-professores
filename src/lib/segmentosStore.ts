@@ -1,5 +1,6 @@
 import { Segmento } from './types';
 import { useSyncExternalStore } from 'react';
+import { toast } from 'sonner';
 
 type Subscriber = () => void;
 
@@ -42,7 +43,7 @@ export async function initSegmentosFromApi() {
             notify();
         }
     } catch {
-        // API indisponível
+        toast.error('Erro ao carregar parâmetros. Verifique a conexão.');
     }
 }
 

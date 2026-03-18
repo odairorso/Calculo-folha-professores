@@ -1,48 +1,44 @@
 import { useEffect, useMemo, useState } from 'react';
 import { PageHeader } from '@/components/PageHeader';
-import { formatCurrency, formatCompetencia } from '@/lib/mockData';
+import { formatCurrency, formatCompetencia, gerarMesesDisponiveis, competenciaAtual } from '@/lib/mockData';
 import { useSegmentos, initSegmentosFromApi } from '@/lib/segmentosStore';
 import { Lancamento, gerarLancamento } from '@/lib/types';
 import { Card, CardContent } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { RefreshCw } from 'lucide-react';
 import { useProfessores } from '@/lib/store';
+
+const MESES = gerarMesesDisponiveis(12);
 
 export default function LancamentosPage() {
   const profs = useProfessores();
   const segmentos = useSegmentos();
-  const [lancs, setLancs] = useState<Lancamento[]>([]);
-  const [compFilter, setCompFilter] = useState('2026-03');
+  const [compFilter, setCompFilter] = useState(competenciaAtual);
 
   useEffect(() => {
     initSegmentosFromApi();
   }, []);
 
-  const filtered = useMemo(() => lancs.filter((l) => l.competencia === compFilter), [lancs, compFilter]);
-  const totalGeral = filtered.reduce((s, l) => s + l.totalPagar, 0);
+  // Maps para lookup O(1) em vez de .find() a cada linha renderizada
+  const profMap = useMemo(() => new Map(profs.map(p => [p.id, p])), [profs]);
+  const segMap = useMemo(() => new Map(segmentos.map(s => [s.id, s])), [segmentos]);
 
-  const recalcular = () => {
-    const newLancs: Lancamento[] = [];
-    profs.filter(p => p.ativo).forEach((prof) => {
-      prof.segmentoIds.forEach((segId) => {
-        const seg = segmentos.find((s) => s.id === segId)!;
-        const lanc = gerarLancamento(prof, seg, compFilter);
-        newLancs.push({ ...lanc, id: `l-${prof.id}-${segId}-${compFilter}` });
+  // Cálculo reativo: recalcula apenas quando profs, segmentos ou competência mudam
+  const filtered = useMemo((): (Lancamento & { id: string })[] => {
+    const list: (Lancamento & { id: string })[] = [];
+    profs.filter(p => p.ativo).forEach(prof => {
+      prof.segmentoIds.forEach(segId => {
+        const seg = segMap.get(segId);
+        if (!seg) return;
+        const l = gerarLancamento(prof, seg, compFilter);
+        list.push({ ...l, id: `l-${prof.id}-${segId}-${compFilter}` });
       });
     });
-    setLancs((prev) => {
-      const other = prev.filter((l) => l.competencia !== compFilter);
-      return [...other, ...newLancs];
-    });
-  };
+    return list;
+  }, [profs, segmentos, compFilter, segMap]);
 
-  useEffect(() => {
-    recalcular();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [profs, compFilter]);
+  const totalGeral = useMemo(() => filtered.reduce((s, l) => s + l.totalPagar, 0), [filtered]);
 
   return (
     <div>
@@ -50,21 +46,16 @@ export default function LancamentosPage() {
         title="Lançamento de Horas"
         description="Cálculo automático por competência (layout tipo planilha)"
         actions={
-          <div className="flex items-center gap-3">
-            <Select value={compFilter} onValueChange={setCompFilter}>
-              <SelectTrigger className="w-[160px]">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="2026-01">Jan/2026</SelectItem>
-                <SelectItem value="2026-02">Fev/2026</SelectItem>
-                <SelectItem value="2026-03">Mar/2026</SelectItem>
-              </SelectContent>
-            </Select>
-            <Button onClick={recalcular} variant="outline">
-              <RefreshCw className="w-4 h-4 mr-2" />Recalcular
-            </Button>
-          </div>
+          <Select value={compFilter} onValueChange={setCompFilter}>
+            <SelectTrigger className="w-[160px]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {MESES.map(m => (
+                <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         }
       />
 
@@ -87,8 +78,8 @@ export default function LancamentosPage() {
             </TableHeader>
             <TableBody>
               {filtered.map((lanc) => {
-                const prof = profs.find((p) => p.id === lanc.professorId);
-                const seg = segmentos.find((s) => s.id === lanc.segmentoId);
+                const prof = profMap.get(lanc.professorId);
+                const seg = segMap.get(lanc.segmentoId);
                 const horasSemanais = (prof?.horasSemanais ?? seg?.horasSemanais) ?? 0;
                 const valorHora = (prof?.valorHora ?? seg?.valorHora) ?? 0;
                 return (

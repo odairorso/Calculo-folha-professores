@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { PageHeader } from '@/components/PageHeader';
-import { formatCurrency, formatCompetencia } from '@/lib/mockData';
+import { formatCurrency, formatCompetencia, gerarMesesDisponiveis, competenciaAtual } from '@/lib/mockData';
 import { useProfessores, initProfessoresFromApi } from '@/lib/store';
 import { useSegmentos, initSegmentosFromApi } from '@/lib/segmentosStore';
 import { Fechamento, gerarLancamento, Lancamento } from '@/lib/types';
@@ -14,11 +14,13 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
 
+const MESES = gerarMesesDisponiveis(12);
+
 export default function FechamentoPage() {
   const professores = useProfessores();
   const segmentos = useSegmentos();
   const [fechs, setFechs] = useState<Fechamento[]>([]);
-  const [comp, setComp] = useState('2026-03');
+  const [comp, setComp] = useState(competenciaAtual);
   const [obs, setObs] = useState('');
   const [dialogOpen, setDialogOpen] = useState(false);
 
@@ -27,17 +29,24 @@ export default function FechamentoPage() {
     initSegmentosFromApi();
   }, []);
 
-  // Calcular lançamentos on-the-fly
-  const compLancs: Lancamento[] = professores.filter(p => p.ativo).flatMap((prof) => {
-    return prof.segmentoIds.map((segId) => {
-      const seg = segmentos.find((s) => s.id === segId);
-      if (!seg) return null;
-      const l = gerarLancamento(prof, seg, comp);
-      return { ...l, id: `l-${prof.id}-${segId}-${comp}` };
-    }).filter(Boolean) as Lancamento[];
-  });
-  const totalGeral = compLancs.reduce((s, l) => s + l.totalPagar, 0);
-  const isFechado = fechs.some((f) => f.competencia === comp);
+  // Maps para lookup O(1)
+  const profMap = useMemo(() => new Map(professores.map(p => [p.id, p])), [professores]);
+  const segMap = useMemo(() => new Map(segmentos.map(s => [s.id, s])), [segmentos]);
+
+  // Cálculo memoizado: deps corretas
+  const compLancs = useMemo((): (Lancamento & { id: string })[] => {
+    return professores.filter(p => p.ativo).flatMap((prof) =>
+      prof.segmentoIds.flatMap((segId) => {
+        const seg = segMap.get(segId);
+        if (!seg) return [];
+        const l = gerarLancamento(prof, seg, comp);
+        return [{ ...l, id: `l-${prof.id}-${segId}-${comp}` }];
+      })
+    );
+  }, [professores, segmentos, comp, segMap]);
+
+  const totalGeral = useMemo(() => compLancs.reduce((s, l) => s + l.totalPagar, 0), [compLancs]);
+  const isFechado = useMemo(() => fechs.some((f) => f.competencia === comp), [fechs, comp]);
 
   const fecharCompetencia = () => {
     const newFech: Fechamento = {
@@ -64,9 +73,9 @@ export default function FechamentoPage() {
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="2026-01">Jan/2026</SelectItem>
-              <SelectItem value="2026-02">Fev/2026</SelectItem>
-              <SelectItem value="2026-03">Mar/2026</SelectItem>
+              {MESES.map(m => (
+                <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>
+              ))}
             </SelectContent>
           </Select>
         }
@@ -107,8 +116,8 @@ export default function FechamentoPage() {
             <TableBody>
               {compLancs.map((l) => (
                 <TableRow key={l.id}>
-                  <TableCell className="font-medium">{professores.find(p => p.id === l.professorId)?.nome}</TableCell>
-                  <TableCell><Badge variant="secondary">{segmentos.find(s => s.id === l.segmentoId)?.nome}</Badge></TableCell>
+                  <TableCell className="font-medium">{profMap.get(l.professorId)?.nome}</TableCell>
+                  <TableCell><Badge variant="secondary">{segMap.get(l.segmentoId)?.nome}</Badge></TableCell>
                   <TableCell className="text-right">{l.totalHoras}h</TableCell>
                   <TableCell className="text-right font-bold">{formatCurrency(l.totalPagar)}</TableCell>
                 </TableRow>

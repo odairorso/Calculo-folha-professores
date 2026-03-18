@@ -1,47 +1,46 @@
 import { useEffect, useMemo, useState } from 'react';
 import { PageHeader } from '@/components/PageHeader';
-import { formatCurrency, formatCompetencia } from '@/lib/mockData';
+import { formatCurrency, formatCompetencia, gerarMesesDisponiveis, competenciaAtual } from '@/lib/mockData';
 import { useSegmentos, initSegmentosFromApi } from '@/lib/segmentosStore';
 import { gerarLancamento, Lancamento } from '@/lib/types';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Download, FileText } from 'lucide-react';
+import { Download, FileText, FileDown } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useProfessores } from '@/lib/store';
-import { FileDown } from 'lucide-react';
+
+const MESES = gerarMesesDisponiveis(12);
 
 export default function RelatoriosPage() {
   const profs = useProfessores();
   const segmentos = useSegmentos();
-  const [comp, setComp] = useState('2026-03');
-  const [compLancs, setCompLancs] = useState<Lancamento[]>([]);
+  const [comp, setComp] = useState(competenciaAtual);
 
   useEffect(() => {
     initSegmentosFromApi();
   }, []);
 
-  const recalcular = () => {
-    const list: Lancamento[] = [];
+  // Maps para lookup O(1) em vez de .find() a cada linha renderizada
+  const profMap = useMemo(() => new Map(profs.map(p => [p.id, p])), [profs]);
+  const segMap = useMemo(() => new Map(segmentos.map(s => [s.id, s])), [segmentos]);
+
+  // Cálculo reativo: deps corretas (inclui segmentos)
+  const compLancs = useMemo((): (Lancamento & { id: string })[] => {
+    const list: (Lancamento & { id: string })[] = [];
     profs.filter(p => p.ativo).forEach(p => {
       p.segmentoIds.forEach(segId => {
-        const seg = segmentos.find(s => s.id === segId);
+        const seg = segMap.get(segId);
         if (!seg) return;
         const l = gerarLancamento(p, seg, comp);
         list.push({ ...l, id: `l-${p.id}-${segId}-${comp}` });
       });
     });
-    setCompLancs(list);
-  };
+    return list;
+  }, [profs, segmentos, comp, segMap]);
 
-  useEffect(() => {
-    recalcular();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [profs, comp]);
-
-  // Consolidado por segmento
   const segData = useMemo(() => {
     return segmentos.map((seg) => {
       const segLancs = compLancs.filter((l) => l.segmentoId === seg.id);
@@ -52,29 +51,27 @@ export default function RelatoriosPage() {
         totalPagar: segLancs.reduce((s, l) => s + l.totalPagar, 0),
       };
     }).filter((s) => s.professores > 0);
-  }, [compLancs]);
+  }, [compLancs, segmentos]);
 
   const totalGeral = useMemo(() => compLancs.reduce((s, l) => s + l.totalPagar, 0), [compLancs]);
 
-  // Totais por professor (mensal)
   const totaisPorProfessor = useMemo(() => {
     const map = new Map<string, { nome: string; totalHoras: number; totalPagar: number }>();
     compLancs.forEach((l) => {
-      const p = profs.find((pp) => pp.id === l.professorId);
-      const nome = p?.nome ?? l.professorId;
+      const nome = profMap.get(l.professorId)?.nome ?? l.professorId;
       const cur = map.get(l.professorId) ?? { nome, totalHoras: 0, totalPagar: 0 };
       cur.totalHoras += l.totalHoras;
       cur.totalPagar += l.totalPagar;
       map.set(l.professorId, cur);
     });
     return Array.from(map.values()).sort((a, b) => a.nome.localeCompare(b.nome));
-  }, [compLancs, profs]);
+  }, [compLancs, profMap]);
 
   const exportCSV = () => {
     const header1 = 'Professor,Segmento,Hrs Mensais,Repouso,H.A.,Total Hrs,Ajuda Custo,Total Pagar\n';
     const rows1 = compLancs.map((l) => {
-      const prof = profs.find((p) => p.id === l.professorId);
-      const seg = segmentos.find((s) => s.id === l.segmentoId);
+      const prof = profMap.get(l.professorId);
+      const seg = segMap.get(l.segmentoId);
       return `${prof?.nome},${seg?.nome},${l.horasMensais},${l.repouso},${l.horasAtividade},${l.totalHoras},${l.ajudaCusto},${l.totalPagar}`;
     }).join('\n');
     const header2 = '\n\nTotais por Professor\nProfessor,Total Horas,Total a Pagar\n';
@@ -85,6 +82,7 @@ export default function RelatoriosPage() {
     a.href = url;
     a.download = `relatorio-${comp}.csv`;
     a.click();
+    URL.revokeObjectURL(url);
   };
 
   const exportPDF = () => {
@@ -118,8 +116,8 @@ export default function RelatoriosPage() {
       </tr>
     `).join('');
     const detRows = compLancs.map(l => {
-      const p = profs.find(pp => pp.id === l.professorId);
-      const seg = segmentos.find(s => s.id === l.segmentoId);
+      const p = profMap.get(l.professorId);
+      const seg = segMap.get(l.segmentoId);
       return `
         <tr>
           <td>${p?.nome ?? ''}</td>
@@ -175,9 +173,9 @@ export default function RelatoriosPage() {
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="2026-01">Jan/2026</SelectItem>
-                <SelectItem value="2026-02">Fev/2026</SelectItem>
-                <SelectItem value="2026-03">Mar/2026</SelectItem>
+                {MESES.map(m => (
+                  <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>
+                ))}
               </SelectContent>
             </Select>
             <Button onClick={exportPDF}>
@@ -265,8 +263,8 @@ export default function RelatoriosPage() {
             </TableHeader>
             <TableBody>
               {compLancs.map((l) => {
-                const prof = profs.find((p) => p.id === l.professorId);
-                const seg = segmentos.find((s) => s.id === l.segmentoId);
+                const prof = profMap.get(l.professorId);
+                const seg = segMap.get(l.segmentoId);
                 return (
                   <TableRow key={l.id}>
                     <TableCell className="font-medium">{prof?.nome}</TableCell>

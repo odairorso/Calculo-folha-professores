@@ -51,3 +51,16 @@ export function formatCompetencia(comp: string): string {
   const months = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
   return `${months[parseInt(month) - 1]}/${year}`;
 }
+
+export function gerarMesesDisponiveis(n = 12): { value: string; label: string }[] {
+  const result: { value: string; label: string }[] = [];
+  const now = new Date();
+  for (let i = 0; i < n; i++) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    const value = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+    result.push({ value, label: formatCompetencia(value) });
+  }
+  return result;
+}
+
+export const competenciaAtual = new Date().toISOString().slice(0, 7);
