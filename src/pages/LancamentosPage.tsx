@@ -36,7 +36,7 @@ export default function LancamentosPage() {
       });
     });
     return list;
-  }, [profs, segmentos, compFilter, segMap]);
+  }, [profs, compFilter, segMap]);
 
   const totalGeral = useMemo(() => filtered.reduce((s, l) => s + l.totalPagar, 0), [filtered]);
 

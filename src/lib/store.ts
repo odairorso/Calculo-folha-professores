@@ -16,7 +16,7 @@ export async function initProfessoresFromApi() {
     const r = await fetch('/api/professores');
     if (r.ok) {
       const data = await r.json();
-      professoresStore = data.map((p: any) => {
+      professoresStore = data.map((p: { id: string; nome: string; cpf: string; dataAdmissao: string; valorHora?: number; ajudaCusto?: number; ativo: boolean; segmentoHoras?: Record<string, string | number> }) => {
         // segmentoHoras vem como { segmentoId: "horasString" }
         const segmentoHoras: Record<string, number> = {};
         if (p.segmentoHoras) {
@@ -76,7 +76,7 @@ export async function addProfessor(p: Professor) {
 
 export async function updateProfessor(id: string, patch: Partial<Professor>) {
   try {
-    const body: any = { id };
+    const body: Record<string, unknown> = { id };
     if (patch.nome != null) body.nome = patch.nome;
     if (patch.cpf != null) body.cpf = patch.cpf;
     if (patch.dataAdmissao != null) body.dataAdmissao = patch.dataAdmissao;
@@ -88,7 +88,7 @@ export async function updateProfessor(id: string, patch: Partial<Professor>) {
       body.segmentos = patch.segmentoIds.map(sid => ({
         segmentoId: sid,
         horasSemanais: patch.segmentoHoras?.[sid] || 0,
-      })).filter((s: any) => s.segmentoId);
+      })).filter((s) => s.segmentoId);
     }
     await fetch('/api/professores', {
       method: 'PATCH',

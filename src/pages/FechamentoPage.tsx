@@ -43,7 +43,7 @@ export default function FechamentoPage() {
         return [{ ...l, id: `l-${prof.id}-${segId}-${comp}` }];
       })
     );
-  }, [professores, segmentos, comp, segMap]);
+  }, [professores, comp, segMap]);
 
   const totalGeral = useMemo(() => compLancs.reduce((s, l) => s + l.totalPagar, 0), [compLancs]);
   const isFechado = useMemo(() => fechs.some((f) => f.competencia === comp), [fechs, comp]);

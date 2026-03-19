@@ -55,7 +55,7 @@ export default function ParametrosPage() {
       const mensais = horasSemanais * 4.5;
       const haHoras = editValues.horasAtividade ?? current.horasAtividade;
       const haPercent = mensais > 0 ? haHoras / mensais : 0;
-      const body: any = {
+      const body: Record<string, unknown> = {
         id: editingId,
         horasSemanais,
         valorHora: editValues.valorHora ?? current.valorHora,

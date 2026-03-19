@@ -23,7 +23,7 @@ export async function initSegmentosFromApi() {
         if (r.ok) {
             const data = await r.json();
             // API traz haPercent; converte para horasAtividade para exibição
-            segmentosStore = data.map((s: any) => {
+            segmentosStore = data.map((s: { id: string; nome: string; horasSemanais: number; haPercent: number; percRepouso: number; valorHora: number; ajudaCusto: number }) => {
                 const hs = Number(s.horasSemanais) || 10;
                 const mensais = hs * 4.5;
                 const haPercent = Number(s.haPercent) || 0;

@@ -39,7 +39,7 @@ export default function RelatoriosPage() {
       });
     });
     return list;
-  }, [profs, segmentos, comp, segMap]);
+  }, [profs, comp, segMap]);
 
   const segData = useMemo(() => {
     return segmentos.map((seg) => {
