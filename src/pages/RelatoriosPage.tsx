@@ -11,13 +11,17 @@ import { Download, FileText, FileDown } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useProfessores } from '@/lib/store';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 const MESES = gerarMesesDisponiveis(12);
+const TODOS_PROFESSORES = '__all__';
 
 export default function RelatoriosPage() {
   const profs = useProfessores();
   const segmentos = useSegmentos();
   const [comp, setComp] = useState(competenciaAtual);
+  const [professorId, setProfessorId] = useState<string>(TODOS_PROFESSORES);
 
   useEffect(() => {
     initSegmentosFromApi();
@@ -41,9 +45,19 @@ export default function RelatoriosPage() {
     return list;
   }, [profs, comp, segMap]);
 
+  const lancsFiltrados = useMemo(() => {
+    if (professorId === TODOS_PROFESSORES) return compLancs;
+    return compLancs.filter((l) => l.professorId === professorId);
+  }, [compLancs, professorId]);
+
+  const professorSelecionado = useMemo(() => {
+    if (professorId === TODOS_PROFESSORES) return null;
+    return profMap.get(professorId) ?? null;
+  }, [professorId, profMap]);
+
   const segData = useMemo(() => {
     return segmentos.map((seg) => {
-      const segLancs = compLancs.filter((l) => l.segmentoId === seg.id);
+      const segLancs = lancsFiltrados.filter((l) => l.segmentoId === seg.id);
       return {
         segmento: seg.nome,
         professores: segLancs.length,
@@ -51,13 +65,13 @@ export default function RelatoriosPage() {
         totalPagar: segLancs.reduce((s, l) => s + l.totalPagar, 0),
       };
     }).filter((s) => s.professores > 0);
-  }, [compLancs, segmentos]);
+  }, [lancsFiltrados, segmentos]);
 
-  const totalGeral = useMemo(() => compLancs.reduce((s, l) => s + l.totalPagar, 0), [compLancs]);
+  const totalGeral = useMemo(() => lancsFiltrados.reduce((s, l) => s + l.totalPagar, 0), [lancsFiltrados]);
 
   const totaisPorProfessor = useMemo(() => {
     const map = new Map<string, { nome: string; totalHoras: number; totalPagar: number }>();
-    compLancs.forEach((l) => {
+    lancsFiltrados.forEach((l) => {
       const nome = profMap.get(l.professorId)?.nome ?? l.professorId;
       const cur = map.get(l.professorId) ?? { nome, totalHoras: 0, totalPagar: 0 };
       cur.totalHoras += l.totalHoras;
@@ -65,11 +79,11 @@ export default function RelatoriosPage() {
       map.set(l.professorId, cur);
     });
     return Array.from(map.values()).sort((a, b) => a.nome.localeCompare(b.nome));
-  }, [compLancs, profMap]);
+  }, [lancsFiltrados, profMap]);
 
   const exportCSV = () => {
     const header1 = 'Professor,Segmento,Hrs Mensais,Repouso,H.A.,Total Hrs,Ajuda Custo,Total Pagar\n';
-    const rows1 = compLancs.map((l) => {
+    const rows1 = lancsFiltrados.map((l) => {
       const prof = profMap.get(l.professorId);
       const seg = segMap.get(l.segmentoId);
       return `${prof?.nome},${seg?.nome},${l.horasMensais},${l.repouso},${l.horasAtividade},${l.totalHoras},${l.ajudaCusto},${l.totalPagar}`;
@@ -80,94 +94,178 @@ export default function RelatoriosPage() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `relatorio-${comp}.csv`;
+    a.download = `relatorio-${comp}${professorSelecionado ? `-${professorSelecionado.nome}` : ''}.csv`;
     a.click();
     URL.revokeObjectURL(url);
   };
 
   const exportPDF = () => {
-    const title = `Relatório — ${formatCompetencia(comp)}`;
-    const win = window.open('', '_blank');
-    if (!win) return;
-    const style = `
-      <style>
-        *{font-family: Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;}
-        h1{font-size:20px;margin:0 0 12px;}
-        h2{font-size:16px;margin:20px 0 8px;}
-        table{width:100%;border-collapse:collapse;margin-bottom:12px;font-size:12px;}
-        th,td{border:1px solid #ddd;padding:6px 8px;text-align:right;}
-        th:first-child, td:first-child{text-align:left;}
-        tfoot td{font-weight:700;}
-      </style>
-    `;
-    const segRows = segData.map(s => `
-      <tr>
-        <td>${s.segmento}</td>
-        <td>${s.professores}</td>
-        <td>${s.totalHoras.toFixed(2)}h</td>
-        <td>${formatCurrency(s.totalPagar)}</td>
-      </tr>
-    `).join('');
-    const totProfRows = totaisPorProfessor.map(r => `
-      <tr>
-        <td>${r.nome}</td>
-        <td>${r.totalHoras.toFixed(2)}h</td>
-        <td>${formatCurrency(r.totalPagar)}</td>
-      </tr>
-    `).join('');
-    const detRows = compLancs.map(l => {
-      const p = profMap.get(l.professorId);
-      const seg = segMap.get(l.segmentoId);
-      return `
-        <tr>
-          <td>${p?.nome ?? ''}</td>
-          <td>${seg?.nome ?? ''}</td>
-          <td>${l.horasMensais}h</td>
-          <td>${l.repouso}h</td>
-          <td>${l.horasAtividade}h</td>
-          <td>${l.totalHoras}h</td>
-          <td>${formatCurrency(l.ajudaCusto)}</td>
-          <td>${formatCurrency(l.totalPagar)}</td>
-        </tr>
-      `;
-    }).join('');
-    const html = `
-      <html>
-        <head><title>${title}</title>${style}</head>
-        <body>
-          <h1>${title}</h1>
-          <h2>Consolidado por Segmento</h2>
-          <table>
-            <thead><tr><th>Segmento</th><th>Professores</th><th>Total Horas</th><th>Total a Pagar</th></tr></thead>
-            <tbody>${segRows}</tbody>
-            <tfoot><tr><td colspan="3">Total Geral</td><td>${formatCurrency(totalGeral)}</td></tr></tfoot>
-          </table>
-          <h2>Totais por Professor (Mensal)</h2>
-          <table>
-            <thead><tr><th>Professor</th><th>Total Horas</th><th>Total a Pagar</th></tr></thead>
-            <tbody>${totProfRows}</tbody>
-          </table>
-          <h2>Detalhamento por Professor</h2>
-          <table>
-            <thead><tr><th>Professor</th><th>Segmento</th><th>Hrs Mensais</th><th>Repouso</th><th>H.A.</th><th>Total Hrs</th><th>Ajuda Custo</th><th>Total a Pagar</th></tr></thead>
-            <tbody>${detRows}</tbody>
-          </table>
-          <script>window.onload = () => setTimeout(() => { window.print(); }, 100);</script>
-        </body>
-      </html>
-    `;
-    win.document.open();
-    win.document.write(html);
-    win.document.close();
+    const title = `Relatório — ${formatCompetencia(comp)}${professorSelecionado ? ` — ${professorSelecionado.nome}` : ''}`;
+    const sanitize = (name: string) => {
+      return name
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/[^a-zA-Z0-9_-]+/g, '-')
+        .replace(/-+/g, '-')
+        .replace(/(^-|-$)/g, '')
+        .toLowerCase();
+    };
+
+    const dataGeracao = new Date().toLocaleString('pt-BR');
+    const doc = new jsPDF({
+      orientation: professorSelecionado ? 'portrait' : 'landscape',
+      unit: 'pt',
+      format: 'a4',
+    });
+    const pageWidth = doc.internal.pageSize.getWidth();
+
+    const didDrawPage = (data: { pageNumber: number }) => {
+      doc.setFontSize(12);
+      doc.text('Cálculo Salário Professores', 40, 28);
+      doc.setFontSize(10);
+      doc.text(title, 40, 46);
+      doc.text(`Gerado em: ${dataGeracao}`, pageWidth - 40, 28, { align: 'right' });
+      doc.text(`Página ${data.pageNumber}`, pageWidth - 40, doc.internal.pageSize.getHeight() - 18, { align: 'right' });
+    };
+
+    const commonTable = {
+      theme: 'grid' as const,
+      styles: { fontSize: 9, cellPadding: 4 },
+      headStyles: { fillColor: [30, 50, 80] },
+      alternateRowStyles: { fillColor: [245, 247, 250] },
+      margin: { top: 70, left: 40, right: 40, bottom: 30 },
+      didDrawPage,
+    };
+
+    if (professorSelecionado) {
+      const totalHoras = lancsFiltrados.reduce((s, l) => s + l.totalHoras, 0);
+      const totalPagar = lancsFiltrados.reduce((s, l) => s + l.totalPagar, 0);
+
+      doc.setFontSize(10);
+      doc.text(`Professor: ${professorSelecionado.nome}`, 40, 64);
+      doc.text(`CPF: ${professorSelecionado.cpf}`, 40, 80);
+      doc.text(`Admissão: ${professorSelecionado.dataAdmissao}`, 40, 96);
+      doc.text(`Total do mês: ${formatCurrency(totalPagar)} (${totalHoras.toFixed(2)}h)`, 40, 112);
+
+      autoTable(doc, {
+        ...commonTable,
+        startY: 130,
+        head: [['Segmento', 'Valor Hora', 'Hrs Mensais', 'Repouso', 'H.A.', 'Total Hrs', 'Ajuda Custo', 'Total a Pagar']],
+        body: lancsFiltrados.map((l) => {
+          const seg = segMap.get(l.segmentoId);
+          return [
+            seg?.nome ?? '',
+            seg ? formatCurrency(seg.valorHora) : '',
+            `${l.horasMensais}h`,
+            `${l.repouso}h`,
+            `${l.horasAtividade}h`,
+            `${l.totalHoras}h`,
+            formatCurrency(l.ajudaCusto),
+            formatCurrency(l.totalPagar),
+          ];
+        }),
+        foot: [[
+          'TOTAL',
+          '',
+          '',
+          '',
+          '',
+          `${totalHoras.toFixed(2)}h`,
+          '',
+          formatCurrency(totalPagar),
+        ]],
+        footStyles: { fillColor: [230, 233, 238], textColor: 20, fontStyle: 'bold' },
+        columnStyles: {
+          0: { cellWidth: 150 },
+          1: { halign: 'right' },
+          2: { halign: 'right' },
+          3: { halign: 'right' },
+          4: { halign: 'right' },
+          5: { halign: 'right' },
+          6: { halign: 'right' },
+          7: { halign: 'right' },
+        },
+      });
+    } else {
+      doc.setFontSize(10);
+      doc.text(`Total geral: ${formatCurrency(totalGeral)}`, 40, 64);
+
+      autoTable(doc, {
+        ...commonTable,
+        startY: 80,
+        head: [['Consolidado por Segmento', 'Professores', 'Total Horas', 'Total a Pagar']],
+        body: segData.map((s) => [s.segmento, String(s.professores), `${s.totalHoras.toFixed(2)}h`, formatCurrency(s.totalPagar)]),
+        foot: [['TOTAL', '', '', formatCurrency(totalGeral)]],
+        footStyles: { fillColor: [230, 233, 238], textColor: 20, fontStyle: 'bold' },
+        columnStyles: { 1: { halign: 'right' }, 2: { halign: 'right' }, 3: { halign: 'right' } },
+      });
+
+      const y1 = (doc as unknown as { lastAutoTable?: { finalY: number } }).lastAutoTable?.finalY ?? 80;
+      autoTable(doc, {
+        ...commonTable,
+        startY: y1 + 18,
+        head: [['Totais por Professor (Mensal)', 'Total Horas', 'Total a Pagar']],
+        body: totaisPorProfessor.map((r) => [r.nome, `${r.totalHoras.toFixed(2)}h`, formatCurrency(r.totalPagar)]),
+        foot: [[
+          'TOTAL',
+          `${totaisPorProfessor.reduce((s, r) => s + r.totalHoras, 0).toFixed(2)}h`,
+          formatCurrency(totaisPorProfessor.reduce((s, r) => s + r.totalPagar, 0)),
+        ]],
+        footStyles: { fillColor: [230, 233, 238], textColor: 20, fontStyle: 'bold' },
+        columnStyles: { 1: { halign: 'right' }, 2: { halign: 'right' } },
+      });
+
+      const y2 = (doc as unknown as { lastAutoTable?: { finalY: number } }).lastAutoTable?.finalY ?? y1 + 18;
+      autoTable(doc, {
+        ...commonTable,
+        startY: y2 + 18,
+        styles: { fontSize: 8, cellPadding: 3 },
+        head: [['Detalhamento', 'Segmento', 'Hrs Mensais', 'Repouso', 'H.A.', 'Total Hrs', 'Ajuda Custo', 'Total a Pagar']],
+        body: lancsFiltrados.map((l) => {
+          const p = profMap.get(l.professorId);
+          const seg = segMap.get(l.segmentoId);
+          return [
+            p?.nome ?? '',
+            seg?.nome ?? '',
+            `${l.horasMensais}h`,
+            `${l.repouso}h`,
+            `${l.horasAtividade}h`,
+            `${l.totalHoras}h`,
+            formatCurrency(l.ajudaCusto),
+            formatCurrency(l.totalPagar),
+          ];
+        }),
+        columnStyles: {
+          0: { cellWidth: 150 },
+          1: { cellWidth: 120 },
+        },
+      });
+    }
+
+    const fileName = `relatorio-${comp}${professorSelecionado ? `-${sanitize(professorSelecionado.nome)}` : ''}.pdf`;
+    doc.save(fileName);
   };
 
   return (
     <div>
       <PageHeader
         title="Relatórios"
-        description={`Relatório consolidado — ${formatCompetencia(comp)}`}
+        description={`Relatório consolidado — ${formatCompetencia(comp)}${professorSelecionado ? ` — ${professorSelecionado.nome}` : ''}`}
         actions={
           <div className="flex items-center gap-3">
+            <Select value={professorId} onValueChange={setProfessorId}>
+              <SelectTrigger className="w-[220px]">
+                <SelectValue placeholder="Professor" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={TODOS_PROFESSORES}>Todos os professores</SelectItem>
+                {profs.filter((p) => p.ativo).map((p) => (
+                  <SelectItem key={p.id} value={p.id}>
+                    {p.nome}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
             <Select value={comp} onValueChange={setComp}>
               <SelectTrigger className="w-[160px]">
                 <SelectValue />
@@ -262,7 +360,7 @@ export default function RelatoriosPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {compLancs.map((l) => {
+              {lancsFiltrados.map((l) => {
                 const prof = profMap.get(l.professorId);
                 const seg = segMap.get(l.segmentoId);
                 return (

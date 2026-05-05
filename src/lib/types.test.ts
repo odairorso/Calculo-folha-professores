@@ -53,13 +53,13 @@ describe('gerarLancamento com valorHora do professor', () => {
     ativo: true,
   };
 
-  it('usa valorHora do professor quando presente', () => {
-    const prof = { ...base, horasSemanais: 10, valorHora: 30 };
-    const lanc = gerarLancamento(prof, segmento, '2026-03');
-    expect(lanc.totalPagar).toBeGreaterThan(0);
-    const profSeg = { ...base, horasSemanais: 10 };
-    const lancSeg = gerarLancamento(profSeg, segmento, '2026-03');
-    expect(lanc.totalPagar).toBeGreaterThan(lancSeg.totalPagar);
+  it('usa valorHora do segmento (valor do professor é ignorado)', () => {
+    const profComValor = { ...base, horasSemanais: 10, valorHora: 30 };
+    const lancComValor = gerarLancamento(profComValor, segmento, '2026-03');
+    const profSemValor = { ...base, horasSemanais: 10 };
+    const lancSemValor = gerarLancamento(profSemValor, segmento, '2026-03');
+    expect(lancComValor.totalPagar).toBeGreaterThan(0);
+    expect(lancComValor.totalPagar).toBe(lancSemValor.totalPagar);
   });
 });
 
@@ -83,13 +83,13 @@ describe('gerarLancamento com ajudaCusto do professor', () => {
     ativo: true,
   };
 
-  it('soma ajudaCusto do professor ao total', () => {
-    const prof = { ...base, horasSemanais: 10, ajudaCusto: 100 };
-    const lanc = gerarLancamento(prof, segmento, '2026-03');
-    expect(lanc.ajudaCusto).toBe(100);
-    const profZero = { ...base, horasSemanais: 10, ajudaCusto: 0 };
-    const lancZero = gerarLancamento(profZero, segmento, '2026-03');
-    expect(lanc.totalPagar).toBeGreaterThan(lancZero.totalPagar);
+  it('usa ajudaCusto do segmento (ajuda do professor é ignorada)', () => {
+    const profComAjuda = { ...base, horasSemanais: 10, ajudaCusto: 100 };
+    const lancComAjuda = gerarLancamento(profComAjuda, segmento, '2026-03');
+    const profSemAjuda = { ...base, horasSemanais: 10, ajudaCusto: 0 };
+    const lancSemAjuda = gerarLancamento(profSemAjuda, segmento, '2026-03');
+    expect(lancComAjuda.ajudaCusto).toBe(segmento.ajudaCusto);
+    expect(lancComAjuda.totalPagar).toBe(lancSemAjuda.totalPagar);
   });
 });
 
@@ -153,8 +153,9 @@ describe('repouso usa (mensal + ha) / 6', () => {
   it('calcula repouso baseado em mensal + ha', () => {
     const lanc = gerarLancamento(prof, segmento, '2026-03');
     const ha = 54 * (segmento.horasAtividade / 45); // 5% de 54
-    const esperado = (54 + ha) * (1/6);
-    expect(lanc.repouso).toBeCloseTo(esperado, 2);
-    expect(lanc.totalHoras).toBeCloseTo(54 + ha + esperado, 2);
+    const esperadoRepouso = Math.round(((54 + ha) * (1 / 6)) * 10) / 10;
+    const esperadoTotalHoras = Math.round((54 + ha + esperadoRepouso) * 10) / 10;
+    expect(lanc.repouso).toBe(esperadoRepouso);
+    expect(lanc.totalHoras).toBe(esperadoTotalHoras);
   });
 });
