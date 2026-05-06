@@ -13,17 +13,12 @@ import { Professor, calcularHorasMensais, gerarLancamento } from '@/lib/types';
 import { useProfessores, addProfessor as storeAdd, updateProfessor, deleteProfessor, toggleProfessorAtivo, initProfessoresFromApi } from '@/lib/store';
 import { useSegmentos, initSegmentosFromApi } from '@/lib/segmentosStore';
 import { toast } from 'sonner';
+import { formatDateBR } from '@/lib/mockData';
 
 function formatCurrency(value: number) {
   return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
 }
 
-function formatDateBR(isoDate: string) {
-  if (!isoDate) return '';
-  const d = new Date(isoDate);
-  if (Number.isNaN(d.getTime())) return isoDate;
-  return d.toLocaleDateString('pt-BR');
-}
 
 function toNumberBR(v: string): number {
   if (v == null || v === '') return NaN;
@@ -285,10 +280,10 @@ export function ProfessoresPage() {
 
     return (
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-3 text-sm rounded-md border p-3 bg-muted/30 mt-2">
-        <div><span className="text-muted-foreground">Mensal:</span> {tMensais.toFixed(1)}h</div>
-        <div><span className="text-muted-foreground">Repouso:</span> {tRepouso.toFixed(1)}h</div>
-        <div><span className="text-muted-foreground">H.A.:</span> {tHA.toFixed(1)}h</div>
-        <div><span className="text-muted-foreground">Total Hrs:</span> {tHoras.toFixed(1)}h</div>
+        <div><span className="text-muted-foreground">Mensal:</span> {tMensais.toFixed(2)}h</div>
+        <div><span className="text-muted-foreground">Repouso:</span> {tRepouso.toFixed(2)}h</div>
+        <div><span className="text-muted-foreground">H.A.:</span> {tHA.toFixed(2)}h</div>
+        <div><span className="text-muted-foreground">Total Hrs:</span> {tHoras.toFixed(2)}h</div>
         <div><span className="text-muted-foreground">A. Custo:</span> {formatCurrency(tAjuda)}</div>
         <div className="sm:col-span-2 lg:col-span-3">
           <span className="text-muted-foreground">Vr/Hora por turma:</span>
@@ -409,10 +404,10 @@ export function ProfessoresPage() {
                         })}
                       </div>
                     </TableCell>
-                    <TableCell className="text-muted-foreground">{sMensais.toFixed(1)}h</TableCell>
-                    <TableCell className="text-muted-foreground">{sRepouso.toFixed(1)}h</TableCell>
-                    <TableCell className="text-muted-foreground">{sHA.toFixed(1)}h</TableCell>
-                    <TableCell className="text-muted-foreground">{sTotalHoras.toFixed(1)}h</TableCell>
+                    <TableCell className="text-muted-foreground">{sMensais.toFixed(2)}h</TableCell>
+                    <TableCell className="text-muted-foreground">{sRepouso.toFixed(2)}h</TableCell>
+                    <TableCell className="text-muted-foreground">{sHA.toFixed(2)}h</TableCell>
+                    <TableCell className="text-muted-foreground">{sTotalHoras.toFixed(2)}h</TableCell>
                     <TableCell className="font-medium">{formatCurrency(sPagar)}</TableCell>
                     <TableCell>
                       <Badge variant={prof.ativo ? 'default' : 'destructive'}>

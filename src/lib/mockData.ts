@@ -46,6 +46,18 @@ export function formatCurrency(value: number): string {
   return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
 }
 
+export function formatDateBR(isoDate: string): string {
+  if (!isoDate) return '';
+  const d = new Date(isoDate);
+  if (Number.isNaN(d.getTime())) return isoDate;
+  // Usar UTC para evitar problemas de fuso horário se for apenas data YYYY-MM-DD
+  if (isoDate.length <= 10) {
+    const [year, month, day] = isoDate.split('-').map(Number);
+    return `${String(day).padStart(2, '0')}/${String(month).padStart(2, '0')}/${year}`;
+  }
+  return d.toLocaleDateString('pt-BR');
+}
+
 export function formatCompetencia(comp: string): string {
   const [year, month] = comp.split('-');
   const months = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { PageHeader } from '@/components/PageHeader';
-import { formatCurrency, formatCompetencia, gerarMesesDisponiveis, competenciaAtual } from '@/lib/mockData';
+import { formatCurrency, formatCompetencia, gerarMesesDisponiveis, competenciaAtual, formatDateBR } from '@/lib/mockData';
 import { useSegmentos, initSegmentosFromApi } from '@/lib/segmentosStore';
 import { gerarLancamento, Lancamento } from '@/lib/types';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -144,7 +144,7 @@ export default function RelatoriosPage() {
       doc.setFontSize(10);
       doc.text(`Professor: ${professorSelecionado.nome}`, 40, 64);
       doc.text(`CPF: ${professorSelecionado.cpf}`, 40, 80);
-      doc.text(`Admissão: ${professorSelecionado.dataAdmissao}`, 40, 96);
+      doc.text(`Admissão: ${formatDateBR(professorSelecionado.dataAdmissao)}`, 40, 96);
       doc.text(`Total do mês: ${formatCurrency(totalPagar)} (${totalHoras.toFixed(2)}h)`, 40, 112);
 
       autoTable(doc, {
