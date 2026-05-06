@@ -112,9 +112,8 @@ export function gerarLancamento(
 
   const percHA = calcularPercentualHA(segmento);
   const horasAtividade = round4(horasMensais * percHA);
-  // Novo cálculo: Repouso = (Mensal + H.A.) * percRepouso
-  const percRepouso = Number(segmento.percRepouso) || 1 / 6;
-  const repouso = round4(calcularRepouso(horasMensais + horasAtividade, percRepouso));
+  // Novo cálculo: Repouso = (Mensal + H.A.) / 6 (conforme solicitado: "dividido por 6")
+  const repouso = round4((horasMensais + horasAtividade) / 6);
   const totalHoras = round4(calcularTotalHoras(horasMensais, repouso, horasAtividade));
   const valorHora = Number(segmento.valorHora) || 0;
   const ajudaCusto = Number(segmento.ajudaCusto) || 0;

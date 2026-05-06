@@ -118,7 +118,7 @@ export default function FechamentoPage() {
                 <TableRow key={l.id}>
                   <TableCell className="font-medium">{profMap.get(l.professorId)?.nome}</TableCell>
                   <TableCell><Badge variant="secondary">{segMap.get(l.segmentoId)?.nome}</Badge></TableCell>
-                  <TableCell className="text-right">{l.totalHoras.toFixed(1)}h</TableCell>
+                  <TableCell className="text-right">{l.totalHoras.toFixed(2)}h</TableCell>
                   <TableCell className="text-right font-bold">{formatCurrency(l.totalPagar)}</TableCell>
                 </TableRow>
               ))}

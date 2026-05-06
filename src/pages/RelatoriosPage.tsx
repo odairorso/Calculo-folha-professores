@@ -156,10 +156,10 @@ export default function RelatoriosPage() {
           return [
             seg?.nome ?? '',
             seg ? formatCurrency(seg.valorHora) : '',
-            `${l.horasMensais.toFixed(1)}h`,
-            `${l.repouso.toFixed(1)}h`,
-            `${l.horasAtividade.toFixed(1)}h`,
-            `${l.totalHoras.toFixed(1)}h`,
+            `${l.horasMensais.toFixed(2)}h`,
+            `${l.repouso.toFixed(2)}h`,
+            `${l.horasAtividade.toFixed(2)}h`,
+            `${l.totalHoras.toFixed(2)}h`,
             formatCurrency(l.ajudaCusto),
             formatCurrency(l.totalPagar),
           ];
@@ -170,7 +170,7 @@ export default function RelatoriosPage() {
           '',
           '',
           '',
-          `${totalHoras.toFixed(1)}h`,
+          `${totalHoras.toFixed(2)}h`,
           '',
           formatCurrency(totalPagar),
         ]],
@@ -194,7 +194,7 @@ export default function RelatoriosPage() {
         ...commonTable,
         startY: 80,
         head: [['Consolidado por Segmento', 'Professores', 'Total Horas', 'Total a Pagar']],
-        body: segData.map((s) => [s.segmento, String(s.professores), `${s.totalHoras.toFixed(1)}h`, formatCurrency(s.totalPagar)]),
+        body: segData.map((s) => [s.segmento, String(s.professores), `${s.totalHoras.toFixed(2)}h`, formatCurrency(s.totalPagar)]),
         foot: [['TOTAL', '', '', formatCurrency(totalGeral)]],
         footStyles: { fillColor: [230, 233, 238], textColor: 20, fontStyle: 'bold' },
         columnStyles: { 1: { halign: 'right' }, 2: { halign: 'right' }, 3: { halign: 'right' } },
@@ -205,10 +205,10 @@ export default function RelatoriosPage() {
         ...commonTable,
         startY: y1 + 18,
         head: [['Totais por Professor (Mensal)', 'Total Horas', 'Total a Pagar']],
-        body: totaisPorProfessor.map((r) => [r.nome, `${r.totalHoras.toFixed(1)}h`, formatCurrency(r.totalPagar)]),
+        body: totaisPorProfessor.map((r) => [r.nome, `${r.totalHoras.toFixed(2)}h`, formatCurrency(r.totalPagar)]),
         foot: [[
           'TOTAL',
-          `${totaisPorProfessor.reduce((s, r) => s + r.totalHoras, 0).toFixed(1)}h`,
+          `${totaisPorProfessor.reduce((s, r) => s + r.totalHoras, 0).toFixed(2)}h`,
           formatCurrency(totaisPorProfessor.reduce((s, r) => s + r.totalPagar, 0)),
         ]],
         footStyles: { fillColor: [230, 233, 238], textColor: 20, fontStyle: 'bold' },
@@ -227,10 +227,10 @@ export default function RelatoriosPage() {
           return [
             p?.nome ?? '',
             seg?.nome ?? '',
-            `${l.horasMensais.toFixed(1)}h`,
-            `${l.repouso.toFixed(1)}h`,
-            `${l.horasAtividade.toFixed(1)}h`,
-            `${l.totalHoras.toFixed(1)}h`,
+            `${l.horasMensais.toFixed(2)}h`,
+            `${l.repouso.toFixed(2)}h`,
+            `${l.horasAtividade.toFixed(2)}h`,
+            `${l.totalHoras.toFixed(2)}h`,
             formatCurrency(l.ajudaCusto),
             formatCurrency(l.totalPagar),
           ];
@@ -309,7 +309,7 @@ export default function RelatoriosPage() {
                 <TableRow key={s.segmento}>
                   <TableCell className="font-medium">{s.segmento}</TableCell>
                   <TableCell className="text-right">{s.professores}</TableCell>
-                  <TableCell className="text-right">{s.totalHoras.toFixed(1)}h</TableCell>
+                  <TableCell className="text-right">{s.totalHoras.toFixed(2)}h</TableCell>
                   <TableCell className="text-right font-bold">{formatCurrency(s.totalPagar)}</TableCell>
                 </TableRow>
               ))}
@@ -367,10 +367,10 @@ export default function RelatoriosPage() {
                   <TableRow key={l.id}>
                     <TableCell className="font-medium">{prof?.nome}</TableCell>
                     <TableCell><Badge variant="secondary">{seg?.nome}</Badge></TableCell>
-                    <TableCell className="text-right">{l.horasMensais.toFixed(1)}h</TableCell>
-                    <TableCell className="text-right">{l.repouso.toFixed(1)}h</TableCell>
-                    <TableCell className="text-right">{l.horasAtividade.toFixed(1)}h</TableCell>
-                    <TableCell className="text-right font-medium">{l.totalHoras.toFixed(1)}h</TableCell>
+                    <TableCell className="text-right">{l.horasMensais.toFixed(2)}h</TableCell>
+                    <TableCell className="text-right">{l.repouso.toFixed(2)}h</TableCell>
+                    <TableCell className="text-right">{l.horasAtividade.toFixed(2)}h</TableCell>
+                    <TableCell className="text-right font-medium">{l.totalHoras.toFixed(2)}h</TableCell>
                     <TableCell className="text-right">{formatCurrency(l.ajudaCusto)}</TableCell>
                     <TableCell className="text-right font-bold">{formatCurrency(l.totalPagar)}</TableCell>
                   </TableRow>
@@ -399,14 +399,14 @@ export default function RelatoriosPage() {
               {totaisPorProfessor.map((r) => (
                 <TableRow key={r.nome}>
                   <TableCell className="font-medium">{r.nome}</TableCell>
-                  <TableCell className="text-right">{r.totalHoras.toFixed(1)}h</TableCell>
+                  <TableCell className="text-right">{r.totalHoras.toFixed(2)}h</TableCell>
                   <TableCell className="text-right font-bold">{formatCurrency(r.totalPagar)}</TableCell>
                 </TableRow>
               ))}
               <TableRow className="bg-muted/50 font-bold">
                 <TableCell className="text-right">TOTAL</TableCell>
                 <TableCell className="text-right">
-                  {totaisPorProfessor.reduce((s, r) => s + r.totalHoras, 0).toFixed(1)}h
+                  {totaisPorProfessor.reduce((s, r) => s + r.totalHoras, 0).toFixed(2)}h
                 </TableCell>
                 <TableCell className="text-right text-lg">
                   {formatCurrency(totaisPorProfessor.reduce((s, r) => s + r.totalPagar, 0))}
