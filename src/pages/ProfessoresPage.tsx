@@ -18,6 +18,13 @@ function formatCurrency(value: number) {
   return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
 }
 
+function formatDateBR(isoDate: string) {
+  if (!isoDate) return '';
+  const d = new Date(isoDate);
+  if (Number.isNaN(d.getTime())) return isoDate;
+  return d.toLocaleDateString('pt-BR');
+}
+
 function toNumberBR(v: string): number {
   if (v == null || v === '') return NaN;
   return parseFloat(String(v).replace(',', '.'));
@@ -52,6 +59,7 @@ export function ProfessoresPage() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [nome, setNome] = useState('');
   const [cpf, setCpf] = useState('');
+  const [dataAdmissao, setDataAdmissao] = useState(new Date().toISOString().split('T')[0]);
   const [slots, setSlots] = useState<SegSlot[]>([{ segId: '', horas: '' }]);
   // Removido valor/ajuda globais: cálculo sempre por turma
 
@@ -59,6 +67,7 @@ export function ProfessoresPage() {
   const [editing, setEditing] = useState<Professor | null>(null);
   const [editNome, setEditNome] = useState('');
   const [editCpf, setEditCpf] = useState('');
+  const [editDataAdmissao, setEditDataAdmissao] = useState('');
   const [editSlots, setEditSlots] = useState<SegSlot[]>([{ segId: '', horas: '' }]);
   // Removido valor/ajuda globais na edição
 
@@ -71,6 +80,7 @@ export function ProfessoresPage() {
   useEffect(() => {
     if (dialogOpen && segmentos.length > 0) {
       setSlots(segmentos.map((s) => ({ segId: s.id, horas: '' })));
+      setDataAdmissao(new Date().toISOString().split('T')[0]);
     }
   }, [dialogOpen, segmentos]);
 
@@ -107,7 +117,7 @@ export function ProfessoresPage() {
       id: `p${Date.now()}`,
       nome,
       cpf: cpf.trim() || 'NÃO INFORMADO',
-      dataAdmissao: new Date().toISOString().split('T')[0],
+      dataAdmissao: dataAdmissao || new Date().toISOString().split('T')[0],
       segmentoIds,
       segmentoHoras,
       ativo: true,
@@ -116,6 +126,7 @@ export function ProfessoresPage() {
     await storeAdd(newProf);
     setNome('');
     setCpf('');
+    setDataAdmissao(new Date().toISOString().split('T')[0]);
     setSlots([{ segId: '', horas: '' }]);
     setDialogOpen(false);
     toast.success('Professor cadastrado com sucesso');
@@ -129,6 +140,7 @@ export function ProfessoresPage() {
     setEditing(p);
     setEditNome(p.nome);
     setEditCpf(p.cpf);
+    setEditDataAdmissao(p.dataAdmissao || '');
 
     // Pré-carrega TODAS as turmas com horas do professor (ou vazio)
     const newSlots: SegSlot[] = segmentos.map((s) => {
@@ -148,6 +160,7 @@ export function ProfessoresPage() {
     const patch: Partial<Professor> = {
       nome: editNome || editing.nome,
       cpf: editCpf || editing.cpf,
+      dataAdmissao: editDataAdmissao || editing.dataAdmissao,
     };
 
     const validSlots = editSlots.filter(s => s.segId && parseFloat(s.horas) > 0);
@@ -315,6 +328,10 @@ export function ProfessoresPage() {
                   <Label>CPF (opcional)</Label>
                   <Input value={cpf} onChange={(e) => setCpf(e.target.value)} placeholder="000.000.000-00" />
                 </div>
+                <div>
+                  <Label>Data de Admissão</Label>
+                  <Input type="date" value={dataAdmissao} onChange={(e) => setDataAdmissao(e.target.value)} />
+                </div>
 
                 {renderSlots(slots, setSlots)}
                 {renderPreview(slots, '', '')}
@@ -348,6 +365,7 @@ export function ProfessoresPage() {
               <TableRow>
                 <TableHead>Nome</TableHead>
                 <TableHead>CPF</TableHead>
+                <TableHead>Admissão</TableHead>
                 <TableHead>Turmas (Hrs)</TableHead>
                 <TableHead>Mensal</TableHead>
                 <TableHead>Repouso</TableHead>
@@ -377,6 +395,7 @@ export function ProfessoresPage() {
                   <TableRow key={prof.id} className="animate-fade-in whitespace-nowrap">
                     <TableCell className="font-medium">{prof.nome}</TableCell>
                     <TableCell className="text-muted-foreground">{prof.cpf}</TableCell>
+                    <TableCell className="text-muted-foreground">{formatDateBR(prof.dataAdmissao)}</TableCell>
                     <TableCell>
                       <div className="flex flex-col gap-1">
                         {prof.segmentoIds.map(sid => {
@@ -445,6 +464,10 @@ export function ProfessoresPage() {
             <div>
               <Label>CPF</Label>
               <Input value={editCpf} onChange={(e) => setEditCpf(e.target.value)} />
+            </div>
+            <div>
+              <Label>Data de Admissão</Label>
+              <Input type="date" value={editDataAdmissao} onChange={(e) => setEditDataAdmissao(e.target.value)} />
             </div>
 
             {renderSlots(editSlots, setEditSlots)}

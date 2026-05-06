@@ -199,7 +199,7 @@ export default function ParametrosPage() {
             </div>
             <div className="flex items-center gap-2">
               <span className="font-mono bg-muted px-2 py-1 rounded text-xs">Repouso</span>
-              <span>= Hrs Mensais × 1/6</span>
+              <span>= (Hrs Mensais + H.A.) × 1/6</span>
             </div>
             <div className="flex items-center gap-2">
               <span className="font-mono bg-muted px-2 py-1 rounded text-xs">Total Horas</span>

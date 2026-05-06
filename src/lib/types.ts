@@ -81,6 +81,10 @@ function round2(n: number): number {
   return Math.round(n * 100) / 100;
 }
 
+function round4(n: number): number {
+  return Math.round(n * 10000) / 10000;
+}
+
 export function gerarLancamento(
   professor: Professor,
   segmento: Segmento,
@@ -88,7 +92,7 @@ export function gerarLancamento(
 ): Omit<Lancamento, 'id'> {
   // Forçar Number() pois PostgreSQL NUMERIC retorna strings
   const horasBaseSemanais = Number(professor.segmentoHoras?.[segmento.id]) || Number(professor.horasSemanais) || Number(segmento.horasSemanais) || 0;
-  const horasMensais = round1(calcularHorasMensais(horasBaseSemanais));
+  const horasMensais = round4(calcularHorasMensais(horasBaseSemanais));
 
   if (isEstagiaria(segmento.nome)) {
     const totalPagar = round2((1000 / 30) * horasBaseSemanais);
@@ -107,11 +111,11 @@ export function gerarLancamento(
   }
 
   const percHA = calcularPercentualHA(segmento);
-  const horasAtividade = round1(horasMensais * percHA);
+  const horasAtividade = round4(horasMensais * percHA);
   // Novo cálculo: Repouso = (Mensal + H.A.) * percRepouso
   const percRepouso = Number(segmento.percRepouso) || 1 / 6;
-  const repouso = round1(calcularRepouso(horasMensais + horasAtividade, percRepouso));
-  const totalHoras = round1(calcularTotalHoras(horasMensais, repouso, horasAtividade));
+  const repouso = round4(calcularRepouso(horasMensais + horasAtividade, percRepouso));
+  const totalHoras = round4(calcularTotalHoras(horasMensais, repouso, horasAtividade));
   const valorHora = Number(segmento.valorHora) || 0;
   const ajudaCusto = Number(segmento.ajudaCusto) || 0;
   const totalPagar = round2(calcularTotalPagar(totalHoras, valorHora, ajudaCusto));

@@ -27,7 +27,7 @@ export async function initSegmentosFromApi() {
                 const hs = Number(s.horasSemanais) || 10;
                 const mensais = hs * 4.5;
                 const haPercent = Number(s.haPercent) || 0;
-                const horasAtividade = Number((mensais * haPercent).toFixed(2));
+                const horasAtividade = mensais * haPercent;
                 const percRepouso = Number(s.percRepouso) || 1 / 6;
                 return {
                     id: s.id,
