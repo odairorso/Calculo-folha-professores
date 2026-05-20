@@ -9,10 +9,11 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Lock, CheckCircle, AlertTriangle } from 'lucide-react';
+import { Lock, CheckCircle, AlertTriangle, Send } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
+import { pushFolhaToFluxoDeCaixa } from '@/api-integration';
 
 const MESES = gerarMesesDisponiveis(12);
 
@@ -23,6 +24,7 @@ export default function FechamentoPage() {
   const [comp, setComp] = useState(competenciaAtual);
   const [obs, setObs] = useState('');
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [isPushing, setIsPushing] = useState(false);
 
   useEffect(() => {
     initProfessoresFromApi();
@@ -48,18 +50,28 @@ export default function FechamentoPage() {
   const totalGeral = useMemo(() => compLancs.reduce((s, l) => s + l.totalPagar, 0), [compLancs]);
   const isFechado = useMemo(() => fechs.some((f) => f.competencia === comp), [fechs, comp]);
 
-  const fecharCompetencia = () => {
-    const newFech: Fechamento = {
-      id: `f-${comp}`,
-      competencia: comp,
-      dataFechamento: new Date().toISOString().split('T')[0],
-      observacao: obs,
-      totalGeral,
-    };
-    setFechs([...fechs, newFech]);
-    setObs('');
-    setDialogOpen(false);
-    toast.success(`Competência ${formatCompetencia(comp)} fechada com sucesso!`);
+  const fecharCompetencia = async () => {
+    setIsPushing(true);
+    try {
+      // Integra com Fluxo de Caixa
+      await pushFolhaToFluxoDeCaixa(comp, totalGeral, obs);
+      
+      const newFech: Fechamento = {
+        id: `f-${comp}`,
+        competencia: comp,
+        dataFechamento: new Date().toISOString().split('T')[0],
+        observacao: obs,
+        totalGeral,
+      };
+      setFechs([...fechs, newFech]);
+      setObs('');
+      setDialogOpen(false);
+      toast.success(`Competência ${formatCompetencia(comp)} fechada e enviada para o Fluxo de Caixa!`);
+    } catch (error: any) {
+      toast.error(`Falha ao integrar com o Fluxo de Caixa: ${error.message}`);
+    } finally {
+      setIsPushing(false);
+    }
   };
 
   return (
@@ -154,8 +166,8 @@ export default function FechamentoPage() {
                   onChange={(e) => setObs(e.target.value)}
                 />
               </div>
-              <Button onClick={fecharCompetencia} className="w-full">
-                Confirmar Fechamento
+              <Button onClick={fecharCompetencia} className="w-full" disabled={isPushing}>
+                {isPushing ? 'Enviando e Fechando...' : 'Confirmar Fechamento'}
               </Button>
             </div>
           </DialogContent>
